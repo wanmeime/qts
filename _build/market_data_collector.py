@@ -159,6 +159,44 @@ class MarketDataCollector:
             logger.error("获取指数K线失败: %s\n%s", e, traceback.format_exc())
             return {}
 
+    async def _fetch_global_indices(self) -> list:
+        """获取全球主要指数数据。"""
+        try:
+            import akshare as ak
+
+            global_indices = [
+                {"name": "道琼斯", "market": "美股", "ak_code": "DJI"},
+                {"name": "纳斯达克", "market": "美股", "ak_code": "IXIC"},
+                {"name": "标普500", "market": "美股", "ak_code": "SPX"},
+                {"name": "恒生指数", "market": "港股", "ak_code": "HSI"},
+            ]
+
+            result = []
+            loop = asyncio.get_event_loop()
+
+            for idx in global_indices:
+                try:
+                    # 使用新浪接口获取全球指数
+                    df = await loop.run_in_executor(
+                        None, lambda code=idx["ak_code"]: ak.stock_us_index_daily(symbol=code)
+                    )
+                    if df is not None and not df.empty:
+                        latest = df.iloc[-1]
+                        result.append({
+                            "name": idx["name"],
+                            "market": idx["market"],
+                            "price": float(latest.get("close", 0)),
+                            "change_pct": round(float(latest.get("close", 0)) / float(latest.get("open", 1)) * 100 - 100, 2) if latest.get("open") else 0,
+                        })
+                except Exception as e:
+                    logger.warning("获取全球指数 %s 失败: %s", idx["name"], e)
+                    result.append({"name": idx["name"], "market": idx["market"], "error": str(e)})
+
+            return result
+        except Exception as e:
+            logger.error("获取全球指数失败: %s\n%s", e, traceback.format_exc())
+            return []
+
     def _compute_technical_indicators(self, index_klines: Dict[str, Any]) -> Dict[str, Any]:
         """计算技术指标（MA/RSI/MACD）。"""
         indicators = {}
