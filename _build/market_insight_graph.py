@@ -384,8 +384,9 @@ class MarketInsightGraph:
         if causal_analysis:
             parts.append(f"## 因果联动分析\n\n{causal_analysis}\n")
 
-        # 6. 趋势预判（通过 LLM 生成）
-        trend_prediction = self._build_trend_prediction(core_report, verdicts, analyst_names)
+        # 6. 趋势预判（通过 LLM 生成，传入新闻数据）
+        news_data = market_data.get("global_news", "")
+        trend_prediction = self._build_trend_prediction(core_report, verdicts, analyst_names, news_data=news_data)
         if trend_prediction:
             parts.append(f"## 趋势预判\n\n{trend_prediction}\n")
 
@@ -478,6 +479,7 @@ class MarketInsightGraph:
         core_report: str,
         verdicts: Dict[str, Dict[str, Any]],
         analyst_names: List[str],
+        news_data: str = "",
     ) -> str:
         """调用 LLM 生成趋势预判章节。"""
         from tradingagents.prompts.market_insight_prompts import get_market_insight_prompt
@@ -506,6 +508,7 @@ class MarketInsightGraph:
         user = get_market_insight_prompt("market_trend_prediction_prompt").format(
             final_judgment=core_report,
             dimension_scores=dimension_scores,
+            news_data=news_data if news_data else "（无最新新闻数据）",
         )
 
         try:
