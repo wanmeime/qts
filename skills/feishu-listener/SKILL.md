@@ -1,21 +1,29 @@
 # 飞书消息监听 Skill
 
 ## 功能
-自动监听飞书群消息，支持命令响应和自动化工作流。
+自动监听飞书群聊或私聊消息，支持命令响应和自动化工作流。
 
 ## 使用方法
 
-### 启动监听
+### 监听群聊
 ```bash
-python skills/feishu_listener.py
+python skills/feishu_listener.py --chat-id oc_xxxxxxxxxxxx
+```
+
+### 监听私聊
+```bash
+python skills/feishu_listener.py --user-id ou_xxxxxxxxxxxx
 ```
 
 ### Python 调用
 ```python
 from skills.feishu_listener import FeishuListener
 
-# 创建监听器
-listener = FeishuListener("oc_xxxxxxxxxxxx", poll_interval=30)
+# 监听群聊
+listener = FeishuListener(chat_id="oc_xxxxxxxxxxxx")
+
+# 或监听私聊
+listener = FeishuListener(user_id="ou_xxxxxxxxxxxx")
 
 # 注册自定义命令
 def my_handler(message):

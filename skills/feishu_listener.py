@@ -18,15 +18,20 @@ WORK_DIR = "/home/jiaod/qts"
 
 
 class FeishuListener:
-    """飞书消息监听器"""
+    """飞书消息监听器（支持群聊和私聊）"""
     
-    def __init__(self, chat_id: str, poll_interval: int = 30):
+    def __init__(self, chat_id: str = None, user_id: str = None, poll_interval: int = 30):
         """
         Args:
-            chat_id: 飞书群 ID
+            chat_id: 飞书群 ID（群聊）
+            user_id: 用户 open_id（私聊）
             poll_interval: 轮询间隔（秒）
         """
+        if not chat_id and not user_id:
+            raise ValueError("必须提供 chat_id 或 user_id")
+        
         self.chat_id = chat_id
+        self.user_id = user_id
         self.poll_interval = poll_interval
         self.last_message_id = None
         self.command_handlers: Dict[str, Callable] = {}
@@ -41,14 +46,19 @@ class FeishuListener:
         self.command_handlers[command] = handler
         
     def get_recent_messages(self, limit: int = 5) -> List[Dict]:
-        """获取最近消息"""
+        """获取最近消息（支持群聊和私聊）"""
         cmd = [
             LARK_CLI, "im", "+chat-messages-list",
-            "--chat-id", self.chat_id,
             "--as", "bot",
             "--page-size", str(limit),
             "--sort", "desc"
         ]
+        
+        # 根据 chat_id 或 user_id 添加参数
+        if self.chat_id:
+            cmd.extend(["--chat-id", self.chat_id])
+        else:
+            cmd.extend(["--user-id", self.user_id])
         
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, cwd=WORK_DIR)
@@ -60,7 +70,7 @@ class FeishuListener:
         return []
     
     def send_message(self, content: str, msg_type: str = "text") -> bool:
-        """发送消息到飞书群
+        """发送消息（支持群聊和私聊）
         
         Args:
             content: 消息内容
@@ -68,10 +78,15 @@ class FeishuListener:
         """
         cmd = [
             LARK_CLI, "im", "+messages-send",
-            "--chat-id", self.chat_id,
             f"--{msg_type}", content,
             "--as", "bot"
         ]
+        
+        # 根据 chat_id 或 user_id 添加参数
+        if self.chat_id:
+            cmd.extend(["--chat-id", self.chat_id])
+        else:
+            cmd.extend(["--user-id", self.user_id])
         
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, cwd=WORK_DIR)
@@ -224,15 +239,31 @@ def handle_send_report(message: Dict) -> str:
 
 def main():
     """主函数"""
-    chat_id = "oc_d2e8df3c676afa2c352d8ece0a9b6141"
+    import argparse
     
-    listener = FeishuListener(chat_id, poll_interval=30)
+    parser = argparse.ArgumentParser(description="飞书消息监听器")
+    parser.add_argument("--chat-id", help="飞书群 ID（群聊）")
+    parser.add_argument("--user-id", help="用户 open_id（私聊）")
+    parser.add_argument("--interval", type=int, default=30, help="轮询间隔（秒）")
+    args = parser.parse_args()
+    
+    if not args.chat_id and not args.user_id:
+        # 默认使用群聊
+        args.chat_id = "oc_d2e8df3c676afa2c352d8ece0a9b6141"
+    
+    listener = FeishuListener(
+        chat_id=args.chat_id,
+        user_id=args.user_id,
+        poll_interval=args.interval
+    )
     
     # 注册命令
     listener.register_command("生成报告", handle_generate_report)
     listener.register_command("发送报告", handle_send_report)
     
     # 开始监听
+    mode = "群聊" if args.chat_id else "私聊"
+    print(f"开始监听飞书{mode}消息")
     listener.start_polling()
 
 
