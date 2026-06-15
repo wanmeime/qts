@@ -105,7 +105,12 @@ qts/
 │   ├── market_insight_graph.py      ← 增强版市场分析（5 Analyst + 辩论）
 │   ├── market_insight_analysts.py   ← 5个并行分析师定义
 │   ├── market_insight_prompts.py    ← 中文 Prompt 模板
-│   └── market_data_collector.py     ← 市场数据采集模块
+│   ├── market_data_collector.py     ← 市场数据采集模块
+│   └── report_template.py           ← HTML 报告生成模板
+│
+├── skills/                          ← 项目内 Skills
+│   ├── market-report/               ← 报告生成 Skill
+│   └── feishu-send/                 ← 飞书发送 Skill
 │
 ├── queue/                          ← Agent间任务队列（复用SMCC模式）
 │   ├── pending/
@@ -280,6 +285,42 @@ docker commit tradingagents-scanner tradingagents-final:latest
 ### Skill 调用
 
 详见 `~/.claude/skills/tradingagents-market-scan/skill.md`
+
+### 项目内 Skills
+
+| Skill | 功能 | 位置 |
+|-------|------|------|
+| market-report | 生成带图表的 HTML 报告 | `skills/market-report/SKILL.md` |
+| feishu-send | 发送文件/消息到飞书群 | `skills/feishu-send/SKILL.md` |
+
+#### 使用示例
+
+```python
+# 生成报告
+from _build.report_template import generate_html
+html = generate_html(md_text, '2026年6月16日')
+
+# 发送到飞书
+from skills.feishu_send import send_file_to_feishu
+result = send_file_to_feishu('oc_xxxxxxxxxxxx', 'report.html')
+```
+
+### 报告模板
+
+`_build/report_template.py` 提供固定的 HTML 模板，确保每次生成的报告格式一致：
+
+```bash
+# 命令行使用
+python _build/report_template.py input.md output.html 2026年6月16日
+```
+
+模板包含的视觉元素：
+- 📊 指数数据表格（红涨绿跌）
+- 🌡️ 情绪温度仪表盘
+- 💰 资金流向仪表盘
+- 📊 综合评判框（红=偏多、绿=偏空、灰=中性）
+- 🔴 多方观点 / 🟢 空方观点
+- 看盘参考（上涨/下跌/横盘确认条件）
 
 ---
 

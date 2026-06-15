@@ -38,17 +38,14 @@ def parse_sentiment(md_text):
     temp_match = re.search(r'情绪温度.*?[：:](.*?)(?:\n|$)', md_text)
     sentiment['temperature'] = temp_match.group(1).strip() if temp_match else '中性'
     
-    # 涨跌比
-    ratio_match = re.search(r'涨跌比.*?[：:](.*?)(?:\n\n|\n\*)', md_text, re.DOTALL)
-    sentiment['ratio'] = ratio_match.group(1).strip() if ratio_match else ''
-    
-    # 成交量
-    volume_match = re.search(r'成交量特征.*?[：:](.*?)(?:\n\n|\n\*)', md_text, re.DOTALL)
-    sentiment['volume'] = volume_match.group(1).strip() if volume_match else ''
-    
-    # 涨停
-    limit_match = re.search(r'涨停.*?跌停.*?[：:](.*?)(?:\n\n|\n\*)', md_text, re.DOTALL)
-    sentiment['limit'] = limit_match.group(1).strip() if limit_match else ''
+    # 简要依据
+    brief_match = re.search(r'判断依据.*?[：:](.*?)(?:\n\n|\n\*)', md_text, re.DOTALL)
+    if brief_match:
+        # 取第一句作为简要说明
+        first_sentence = re.match(r'[^。]*。', brief_match.group(1))
+        sentiment['brief'] = first_sentence.group().strip() if first_sentence else brief_match.group(1).strip()[:100]
+    else:
+        sentiment['brief'] = ''
     
     return sentiment
 
@@ -79,20 +76,61 @@ def parse_views(md_text):
     """解析多空观点"""
     views = {'bull': '', 'bear': '', 'judgment': ''}
     
-    # 多方观点
-    bull_match = re.search(r'多方.*?观点.*?[：:](.*?)(?=\n\*|\n###|\n##)', md_text, re.DOTALL)
-    if bull_match:
-        views['bull'] = bull_match.group(1).strip()
+    # 从核心分歧部分提取多空观点
+    core_section = extract_md_section(md_text, r'## 核心分析\n\n', r'## 因果联动分析')
     
-    # 空方观点
-    bear_match = re.search(r'空方.*?观点.*?[：:](.*?)(?=\n\*|\n###|\n##)', md_text, re.DOTALL)
-    if bear_match:
-        views['bear'] = bear_match.group(1).strip()
+    if core_section:
+        # 提取多方观点（只提取多方部分，排除空方内容）
+        bull_parts = []
+        for match in re.finditer(r'多方[^。]*认为[^。]*。', core_section):
+            text = match.group().strip()
+            # 清理：只保留到"空方"之前
+            if '空方' in text:
+                text = text.split('空方')[0].strip()
+            # 清理括号标记
+            text = re.sub(r'（Bull）', '', text).strip()
+            if text and len(text) > 10:
+                bull_parts.append(text)
+        if bull_parts:
+            views['bull'] = ' '.join(bull_parts[:2])  # 只取前2句
+        
+        # 提取空方观点（只提取空方部分）
+        bear_parts = []
+        for match in re.finditer(r'空方[^。]*认为[^。]*。', core_section):
+            text = match.group().strip()
+            # 清理：只保留到"多方"之前
+            if '多方' in text:
+                text = text.split('多方')[0].strip()
+            # 清理括号标记
+            text = re.sub(r'（Bear）', '', text).strip()
+            if text and len(text) > 10:
+                bear_parts.append(text)
+        if bear_parts:
+            views['bear'] = ' '.join(bear_parts[:2])  # 只取前2句
+        
+        # 如果还是空，尝试其他格式
+        if not views['bull']:
+            bull_match = re.search(r'多方认为(.*?)(?=空方|###|\n##)', core_section, re.DOTALL)
+            if bull_match:
+                text = bull_match.group(1).strip()
+                # 清理到下一个句号
+                text = re.split(r'[。]', text)[0] + '。' if '。' in text else text
+                views['bull'] = text[:200]
+        
+        if not views['bear']:
+            bear_match = re.search(r'空方则?(?:认为|视)(.*?)(?=多方|###|\n##)', core_section, re.DOTALL)
+            if bear_match:
+                text = bear_match.group(1).strip()
+                text = re.split(r'[。]', text)[0] + '。' if '。' in text else text
+                views['bear'] = text[:200]
     
-    # 综合判断
+    # 综合判断 - 精简版本
     judgment_match = re.search(r'综合判断.*?[：:](.*?)(?=\n###|\n##)', md_text, re.DOTALL)
     if judgment_match:
-        views['judgment'] = judgment_match.group(1).strip()
+        judgment = judgment_match.group(1).strip()
+        # 精简：只保留第一句
+        judgment = re.split(r'[。]', judgment)[0] + '。' if '。' in judgment else judgment[:150]
+        views['judgment'] = judgment
     
     return views
 
@@ -219,7 +257,7 @@ def generate_html(md_text, date_str=None):
     sentiment_html = f'''
     <div class="gauge-container">
         <h4>🌡️ 情绪温度</h4>
-        <p style="font-size: 13px; color: #666;">{sentiment.get("ratio", "") or sentiment.get("limit", "")}</p>
+        <p style="font-size: 13px; color: #666;">{sentiment.get("brief", "")[:80]}</p>
         <div class="gauge">
             <div class="gauge-fill {temp_class}" style="width: {temp_width}%;"></div>
         </div>
@@ -238,7 +276,7 @@ def generate_html(md_text, date_str=None):
     fund_html = f'''
     <div class="gauge-container">
         <h4>💰 资金流向</h4>
-        <p style="font-size: 13px; color: #666;">{fund.get("flow", "")}</p>
+        <p style="font-size: 13px; color: #666;">{fund.get("flow", "")[:80]}</p>
         <div class="gauge">
             <div class="gauge-fill {fund_class}" style="width: {fund_width}%;"></div>
         </div>
@@ -250,20 +288,20 @@ def generate_html(md_text, date_str=None):
     </div>'''
     
     # 构建综合评判框
-    conclusion_class = 'bearish' if '偏空' in conclusion['direction'] else ''
-    conclusion_text = conclusion['direction']
     if '偏空' in conclusion['direction']:
+        conclusion_class = 'bearish'
         conclusion_text = '市场偏空，短期调整概率较大'
     elif '偏多' in conclusion['direction']:
+        conclusion_class = ''
         conclusion_text = '市场偏多，短期趋势向上'
     else:
+        conclusion_class = 'neutral'
         conclusion_text = '市场中性，方向不明朗'
     
     conclusion_html = f'''
     <div class="conclusion-box {conclusion_class}">
         <h3>📊 综合评判</h3>
         <p style="font-size: 18px; font-weight: 600;">{conclusion_text}</p>
-        <p style="font-size: 13px; opacity: 0.9; margin-top: 8px;">{conclusion.get("reason", "")}</p>
     </div>'''
     
     # 构建验证信号
@@ -313,6 +351,7 @@ def generate_html(md_text, date_str=None):
         .risk-item {{ background: #ffebee; border-left: 4px solid #e53935; padding: 10px 12px; margin-bottom: 8px; border-radius: 0 6px 6px 0; font-size: 13px; color: #b71c1c; }}
         .conclusion-box {{ background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); color: #fff; padding: 16px; border-radius: 8px; text-align: center; margin: 15px 0; }}
         .conclusion-box.bearish {{ background: linear-gradient(135deg, #dc3545 0%, #c62828 100%); }}
+        .conclusion-box.neutral {{ background: linear-gradient(135deg, #607d8b 0%, #455a64 100%); }}
         .conclusion-box h3 {{ margin-bottom: 8px; }}
         .gauge-container {{ background: #f5f5f5; padding: 14px; border-radius: 8px; margin: 10px 0; }}
         .gauge {{ height: 24px; border-radius: 12px; background: #e0e0e0; position: relative; overflow: hidden; margin: 8px 0; }}
@@ -354,10 +393,12 @@ def generate_html(md_text, date_str=None):
 
             <div class="section">
                 <h2 class="section-title">二、事件联动分析</h2>
-                {events_html}
+                
                 {sentiment_html}
                 {fund_html}
                 {conclusion_html}
+                
+                {events_html}
             </div>
 
             <div class="section">
@@ -396,7 +437,7 @@ def generate_html(md_text, date_str=None):
             </div>
 
             <div class="section">
-                <h2 class="section-title">七、验证信号</h2>
+                <h2 class="section-title">七、看盘参考</h2>
                 <div class="signal-box up">
                     <h4>📈 上涨趋势确认</h4>
                     {build_signal_list(signals["up"].get("items", []))}
