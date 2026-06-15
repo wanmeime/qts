@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>A股市场洞察报告</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; line-height: 1.9; color: #1a1a1a; background: #f0f2f5; padding: 12px; font-size: 14px; }
+        .container { max-width: 100%; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: #fff; padding: 20px 16px; text-align: center; }
+        .header h1 { font-size: 20px; margin-bottom: 6px; }
+        .header .date { font-size: 13px; opacity: 0.9; }
+        .content { padding: 16px; }
+        .section { margin-bottom: 20px; }
+        .section-title { font-size: 16px; color: #1e3c72; border-left: 4px solid #2a5298; padding-left: 10px; margin-bottom: 12px; font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px; }
+        th { background: #f8f9fa; padding: 8px 6px; text-align: left; border-bottom: 2px solid #dee2e6; font-weight: 600; }
+        td { padding: 8px 6px; border-bottom: 1px solid #e9ecef; }
+        .up { color: #dc3545; }      /* 红色 = 上涨 */
+        .down { color: #28a745; }    /* 绿色 = 下跌 */
+        .analysis { color: #2c3e50; font-size: 14px; }
+        .analysis p { margin-bottom: 12px; text-align: justify; }
+        .analysis strong { color: #1a1a1a; }
+        .highlight { background: #fff3cd; padding: 2px 6px; border-radius: 4px; color: #856404; }
+        .event-box { background: #f5f5f5; padding: 14px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #2196f3; }
+        .event-box h4 { color: #1565c0; margin-bottom: 8px; font-size: 14px; }
+        .gauge-container { background: #f5f5f5; padding: 14px; border-radius: 8px; margin: 10px 0; }
+        .gauge { height: 24px; border-radius: 12px; background: #e0e0e0; margin: 8px 0; overflow: hidden; }
+        .gauge-fill { height: 100%; border-radius: 12px; }
+        .gauge-fill.red { background: linear-gradient(90deg, #ff6b6b, #dc3545); }
+        .conclusion-box { background: linear-gradient(135deg, #dc3545 0%, #c62828 100%); color: #fff; padding: 16px; border-radius: 8px; text-align: center; margin: 15px 0; }
+        .bull-box { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 12px 14px; border-radius: 0 8px 8px 0; margin-bottom: 10px; }
+        .bull-box h4 { color: #2e7d32; font-size: 14px; margin-bottom: 6px; }
+        .bear-box { background: #ffebee; border-left: 4px solid #f44336; padding: 12px 14px; border-radius: 0 8px 8px 0; margin-bottom: 10px; }
+        .bear-box h4 { color: #c62828; font-size: 14px; margin-bottom: 6px; }
+        .strategy-box { background: #fff8e1; border-left: 4px solid #ffc107; padding: 12px 14px; border-radius: 0 8px 8px 0; margin-bottom: 10px; }
+        .risk-item { background: #ffebee; border-left: 4px solid #e53935; padding: 10px 12px; margin-bottom: 8px; border-radius: 0 6px 6px 0; font-size: 13px; color: #b71c1c; }
+        .footer { background: #f5f5f5; padding: 14px; text-align: center; color: #666; font-size: 11px; border-top: 1px solid #e0e0e0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 A股市场洞察报告</h1>
+            <div class="date">2026年6月8日 | TradingAgents 多Agent协同分析</div>
+        </div>
+        <div class="content">
+            <div class="section">
+                <h2 class="section-title">一、指数数据</h2>
+                <table>
+                    <tr><th>指数</th><th>收盘点数</th><th>涨跌幅</th></tr>
+                    <tr><td><strong>上证指数</strong></td><td>3,959.34</td><td class="down">-1.70%</td></tr>
+                    <tr><td><strong>深证成指</strong></td><td>15,314.70</td><td class="down">-2.21%</td></tr>
+                    <tr><td><strong>创业板指</strong></td><td>3,957.94</td><td class="down">-3.20%</td></tr>
+                    <tr><td><strong>沪深300</strong></td><td>4,713.64</td><td class="down">-2.14%</td></tr>
+                    <tr><td><strong>科创50</strong></td><td>1,596.57</td><td class="down">-4.30%</td></tr>
+                    <tr><td>美股 道琼斯</td><td>50,866.78</td><td class="down">-1.35%</td></tr>
+                    <tr><td>美股 纳斯达克</td><td>25,709.43</td><td class="down">-4.18%</td></tr>
+                    <tr><td>美股 标普500</td><td>7,383.74</td><td class="down">-2.64%</td></tr>
+                    <tr><td>港股 恒生指数</td><td>24,657.06</td><td class="down">-1.22%</td></tr>
+                </table>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">二、事件联动分析</h2>
+                <div class="event-box">
+                    <h4>📌 事件一：美国就业数据与美联储政策</h4>
+                    <p>近期美国非农就业数据意外强劲，劳动力市场韧性依旧。这显著打压了市场对美联储短期降息的预期。</p>
+                    <p><strong>影响路径：</strong>就业数据强劲 → 美联储鹰派预期 → 美债收益率飙升 → 全球无风险利率上行 → 成长股估值受压</p>
+                </div>
+                <div class="event-box">
+                    <h4>📌 事件二：汇率与跨境资金</h4>
+                    <p>美元指数强势反弹，人民币汇率承压。中美利差倒挂加剧，削弱外资持有人民币资产的收益预期。</p>
+                    <p><strong>影响路径：</strong>美元走强 → 人民币贬值 → 北向资金流出 → A股流动性承压</p>
+                </div>
+
+                <div class="gauge-container">
+                    <h4>🎯 事件驱动评判</h4>
+                    <div class="gauge"><div class="gauge-fill red" style="width: 75%;"></div></div>
+                    <div class="gauge-label"><span>偏多</span><span style="color: #dc3545; font-weight: 600;">偏空 75%</span><span>偏空</span></div>
+                </div>
+
+                <div class="gauge-container">
+                    <h4>🌡️ 情绪温度</h4>
+                    <div class="gauge"><div class="gauge-fill red" style="width: 85%;"></div></div>
+                    <div class="gauge-label"><span>偏热</span><span style="color: #dc3545; font-weight: 600;">偏冷 85%</span><span>偏冷</span></div>
+                </div>
+
+                <div class="conclusion-box">
+                    <h3>📊 综合评判</h3>
+                    <p style="font-size: 18px; font-weight: 600;">市场偏空，短期风险大于机会</p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">三、核心分析</h2>
+                <div class="bull-box">
+                    <h4>🟢 多方观点</h4>
+                    <p>A股跌幅远优于外围，显示韧性；防御板块走强是底仓配置。</p>
+                </div>
+                <div class="bear-box">
+                    <h4>🔴 空方观点</h4>
+                    <p>流动性枯竭导致"虚强"，创业板和科创50真实溃败；全球系统性抛售下支撑失效。</p>
+                </div>
+                <div class="analysis">
+                    <p><strong>综合判断：</strong>倾向于<span class="highlight">空方观点，短期看空</span></p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">四、板块建议</h2>
+                <div class="analysis">
+                    <p><strong>✅ 建议关注：</strong>高股息红利板块、超跌核心资产</p>
+                    <p><strong>❌ 坚决回避：</strong>高估值成长股、纯题材炒作股</p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">五、操作策略</h2>
+                <div class="strategy-box">
+                    <p><strong>仓位建议：稳健/保守（5-7成）</strong></p>
+                    <p>以"防御+低吸"为主，优先配置红利资产作为底仓。</p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">六、风险提示</h2>
+                <div class="risk-item"><strong>1. 外部风险：</strong>美联储政策超预期紧缩</div>
+                <div class="risk-item"><strong>2. 内部风险：</strong>北向资金加速流出</div>
+                <div class="risk-item"><strong>3. 情绪风险：</strong>恐慌情绪蔓延</div>
+            </div>
+        </div>
+        <div class="footer">
+            <div>数据来源：同花顺、新浪财经 | 分析系统：TradingAgents</div>
+        </div>
+    </div>
+</body>
+</html>

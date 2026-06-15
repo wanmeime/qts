@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker start *)",
+      "Bash(curl -s http://localhost:8000/v1/market/insight)",
+      "Read(//tmp/**)",
+      "Bash(curl -s --max-time 30 http://localhost:8000/v1/market/insight)",
+      "Bash(python3 -m json.tool)",
+      "Bash(docker exec *)",
+      "Bash(docker stop tradingagents-scanner *)",
+      "Bash(docker cp *)",
+      "Bash(curl -s --max-time 10 http://localhost:8000/)",
+      "Bash(curl -s --max-time 120 http://localhost:8000/v1/market/insight)",
+      "Bash(curl -s --max-time 10 http://localhost:8000/v1/market/insight)",
+      "Bash(curl -s --max-time 5 http://localhost:8000/)",
+      "Bash(curl -s --max-time 600 http://localhost:8000/v1/market/insight)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); env=d.get\\('env',{}\\); [print\\(f'{k}={v[:20]}...' if len\\(v\\)>20 else f'{k}={v}'\\) for k,v in env.items\\(\\) if 'TA_' in k or 'API' in k.upper\\(\\)]\")",
+      "Bash(env)",
+      "Bash(pip list *)",
+      "Bash(conda env *)",
+      "Bash(pip show *)",
+      "Bash(/home/jiaod/qts-market-scanner/.venv/bin/python -c \"import tradingagents; print\\('tradingagents OK'\\)\")",
+      "Bash(/home/jiaod/qts-market-scanner/.venv/bin/python -c \"import langchain_core; print\\('langchain OK'\\)\")",
+      "Bash(curl -s --max-time 300 http://localhost:8000/v1/market/insight)",
+      "Bash(python3 *)"
+    ]
+  }
+}

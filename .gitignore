@@ -1,0 +1,37 @@
+# Context exclusions for Claude Code / oh-my-feishu
+*.pdf
+*.zip
+*.tar.gz
+__pycache__/
+node_modules/
+*.pyc
+results/
+*.env
+.env*
+qts_data/
+cache/
+*.log
+*.csv
+*.png
+*.jpg
+*.jpeg
+市场分析报告_*.md
+
+# Data directories
+00-研究/数据源/缓存/
+00-研究/宏观/
+00-研究/行业/
+00-研究/自选股/
+20-回测/
+30-信号/*.csv
+30-信号/*.html
+30-信号/市场扫描报告_*.html
+40-执行/持仓/
+90-复盘/日报/
+90-复盘/盈亏记录/
+90-复盘/策略归因/
+90-复盘/参数优化/
+
+# Large data files
+00-研究/数据源/缓存/kline_6m/
+00-研究/缠论知识库/.sync_state.json

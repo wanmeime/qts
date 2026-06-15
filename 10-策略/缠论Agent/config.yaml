@@ -1,0 +1,30 @@
+# 缠论分析 Agent 配置文件
+
+# MACD 参数
+macd:
+  fast: 12      # 快线周期
+  slow: 26      # 慢线周期
+  signal: 9     # 信号线周期
+
+# 缠论参数
+chanlun:
+  min_bi_gap: 4    # 笔的最小间距（K线数量）
+  min_zhong_shu_bi: 3  # 中枢最少笔数
+
+# 多级别参数
+multi_level:
+  levels:
+    - daily
+    - weekly
+    - 15min
+
+# 信号参数
+signal:
+  buy_threshold: 0.3   # 买入信号阈值
+  sell_threshold: 0.3  # 卖出信号阈值
+
+# 数据源
+data_source:
+  provider: akshare
+  default_period: daily
+  history_days: 250    # 默认获取历史数据天数

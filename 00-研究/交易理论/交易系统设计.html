@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>交易系统设计</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+            line-height: 1.9;
+            color: #1a1a1a;
+            background: #f0f2f5;
+            padding: 15px;
+            font-size: 14px;
+        }
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 { font-size: 26px; margin-bottom: 8px; }
+        .header .subtitle { font-size: 14px; opacity: 0.9; }
+        .content { padding: 25px 20px; }
+        .section { margin-bottom: 30px; }
+        .section-title {
+            font-size: 18px;
+            color: #1e3c72;
+            border-left: 4px solid #2a5298;
+            padding-left: 12px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        .subsection {
+            font-size: 15px;
+            color: #2a5298;
+            margin: 15px 0 10px 0;
+            font-weight: 600;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 13px;
+        }
+        th {
+            background: #f8f9fa;
+            padding: 10px 8px;
+            text-align: left;
+            border-bottom: 2px solid #dee2e6;
+            font-weight: 600;
+        }
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        tr:hover { background: #f8f9fa; }
+        .analysis { color: #2c3e50; }
+        .analysis p { margin-bottom: 12px; text-align: justify; }
+        .analysis strong { color: #1a1a1a; }
+        .highlight { background: #fff3cd; padding: 2px 8px; border-radius: 4px; color: #856404; font-weight: 500; }
+        .flow-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .flow-box h4 { margin-bottom: 10px; }
+        .flow-arrow { font-size: 20px; margin: 5px 0; }
+        .principle-box {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin: 10px 0;
+        }
+        .principle-box h4 { color: #2e7d32; margin-bottom: 8px; }
+        .warning-box {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin: 10px 0;
+        }
+        .warning-box h4 { color: #e65100; margin-bottom: 8px; }
+        .danger-box {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin: 10px 0;
+        }
+        .danger-box h4 { color: #c62828; margin-bottom: 8px; }
+        .step-box {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .step-box h4 { color: #1e3c72; margin-bottom: 8px; }
+        .code-box {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            white-space: pre;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin: 15px 0;
+        }
+        .summary-item {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 8px;
+        }
+        .summary-item .label { font-size: 12px; color: #666; }
+        .summary-item .value { font-size: 14px; font-weight: 600; color: #1e3c72; margin-top: 4px; }
+        .footer {
+            background: #f5f5f5;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            border-top: 1px solid #e0e0e0;
+        }
+        @media (max-width: 600px) {
+            .summary-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📈 交易系统设计</h1>
+            <div class="subtitle">基于缠论的完整交易方法论 · 融合十几年实战经验</div>
+        </div>
+
+        <div class="content">
+            <!-- 一、投资背景 -->
+            <div class="section">
+                <h2 class="section-title">一、投资背景</h2>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="label">入市时间</div>
+                        <div class="value">2013年至今，约13年</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">核心理论</div>
+                        <div class="value">缠论</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">交易风格</div>
+                        <div class="value">技术分析 + 估值判断</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">交易频率</div>
+                        <div class="value">中短线为主</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 二、缠论 -->
+            <div class="section">
+                <h2 class="section-title">二、缠论：核心理论基础</h2>
+
+                <div class="principle-box">
+                    <h4>🔧 技术架构：缠论 + MACD 辅助判断</h4>
+                    <p>• 缠论提供<strong>走势结构和买卖点框架</strong></p>
+                    <p>• MACD 提供<strong>趋势确认和背驰判断</strong></p>
+                    <p>• 两者结合使用是缠论完整体系的重要组成部分</p>
+                    <p>• 实际应用中，用缠论做交易系统的人都会<strong>重点关注 MACD 指标</strong></p>
+                </div>
+
+                <div class="principle-box">
+                    <h4>💡 缠论的本质</h4>
+                    <p>缠论是一个<strong>科学解读市场</strong>的工具，而不是预测工具。</p>
+                    <p>• 对<strong>已生成的走势</strong>形成完整体系</p>
+                    <p>• 提供<strong>可重复验证</strong>的分析框架</p>
+                </div>
+
+                <div class="subsection">核心概念</div>
+                <table>
+                    <tr><th>概念</th><th>说明</th></tr>
+                    <tr><td><strong>一类买点</strong></td><td>下跌趋势中的最低点</td></tr>
+                    <tr><td><strong>二类买点</strong></td><td>一买确认后的回调低点（右侧交易）</td></tr>
+                    <tr><td><strong>三类买点</strong></td><td>趋势延续中的加仓点</td></tr>
+                    <tr><td><strong>一类卖点</strong></td><td>上涨趋势中的最高点</td></tr>
+                    <tr><td><strong>二类卖点</strong></td><td>一卖确认后的反弹高点</td></tr>
+                    <tr><td><strong>三类卖点</strong></td><td>趋势延续中的减仓点</td></tr>
+                    <tr><td><strong>中枢</strong></td><td>震荡区间，趋势的中继或转折</td></tr>
+                    <tr><td><strong>底分型</strong></td><td>三根K线构成，中间K线最低</td></tr>
+                </table>
+            </div>
+
+            <!-- 三、选股流程 -->
+            <div class="section">
+                <h2 class="section-title">三、选股流程</h2>
+
+                <div class="flow-box">
+                    <h4>选股流程图</h4>
+                    <div>市场扫描（热门板块 + 领涨股票）</div>
+                    <div class="flow-arrow">↓</div>
+                    <div>缠论分析（买点/卖点/中枢判断）</div>
+                    <div class="flow-arrow">↓</div>
+                    <div>筛选：近期可能产生买点的股票</div>
+                    <div class="flow-arrow">↓</div>
+                    <div>过滤：排除亏损股</div>
+                    <div class="flow-arrow">↓</div>
+                    <div>估值分析（历史位置 + 同业对比）</div>
+                    <div class="flow-arrow">↓</div>
+                    <div><strong>进入选股池</strong></div>
+                </div>
+            </div>
+
+            <!-- 四、交易原则 -->
+            <div class="section">
+                <h2 class="section-title">四、交易原则</h2>
+
+                <div class="danger-box">
+                    <h4>🚫 原则一：亏损股绝对不碰</h4>
+                    <p>亏损股票绝对不看，不选。</p>
+                </div>
+
+                <div class="principle-box">
+                    <h4>📊 原则二：估值分析</h4>
+                    <p>重点查看股票的估值数据：</p>
+                    <p>• 处于<strong>历史高位</strong>还是<strong>低位</strong></p>
+                    <p>• 在<strong>同行业</strong>中属于偏高还是偏低</p>
+                </div>
+
+                <div class="principle-box">
+                    <h4>✅ 原则三：低估值优先</h4>
+                    <p>优先选择<strong>估值较低</strong>的股票进入选股池</p>
+                </div>
+            </div>
+
+            <!-- 五、买入方法 -->
+            <div class="section">
+                <h2 class="section-title">五、买入方法</h2>
+
+                <div class="subsection">多级别联立观察</div>
+                <div class="code-box">日线级别：出现止跌/买点信号
+    ↓
+15分钟级别：观察小级别买点
+    ↓
+分时图：精准捕捉突破时机</div>
+
+                <div class="subsection">底分型确认（核心买入信号）</div>
+                <div class="step-box">
+                    <h4>确认条件</h4>
+                    <p>1. 三根K线形成底分型（中间K线最低）</p>
+                    <p>2. 第四根K线运行中</p>
+                    <p>3. 第四根K线<strong>突破第三根K线的最高点</strong></p>
+                    <p>4. 底分型确认 → 买点形成</p>
+                </div>
+
+                <div class="warning-box">
+                    <h4>🎯 倾向的买点：二买 / 类二买</h4>
+                    <p>• 一类买点：最低点（左侧交易，风险高）</p>
+                    <p>• <strong>二买：右侧交易，更安全</strong></p>
+                    <p>• <strong>类二买：上涨趋势中最佳买入点（个人修正）</strong></p>
+                </div>
+
+                <div class="subsection">类二买详解</div>
+                <div class="principle-box">
+                    <h4>📈 类二买定义</h4>
+                    <p>出现在<strong>上涨趋势中的第一个上涨中枢</strong>（上下上结构）</p>
+                    <p><strong>形态一：中枢下沿横盘</strong> — 两次探底低点基本持平，形成小级别震荡</p>
+                    <p><strong>形态二：中枢上沿横盘</strong> — 在上沿附近横盘整理</p>
+                </div>
+
+                <div class="step-box">
+                    <h4>类二买确认（买入时机）</h4>
+                    <p>1. 出现小级别横盘震荡</p>
+                    <p>2. 观察更小级别底分型或突破小级别中枢上沿</p>
+                    <p>3. 突破小级别中枢上沿 → <strong>类二买成立 → 买入</strong></p>
+                </div>
+
+                <div class="principle-box">
+                    <h4>🎯 类二买的核心特点</h4>
+                    <p>• <strong>上涨力度非常大</strong></p>
+                    <p>• <strong>上涨速度非常快</strong></p>
+                    <p>• 是两个上涨中枢之间连接线的部分</p>
+                    <p>• 这段收益是<strong>速度最快、力度最大</strong>的一段</p>
+                </div>
+
+                <div class="subsection">二买形成逻辑</div>
+                <div class="code-box">下跌趋势
+    ↓
+出现一买（最低点）
+    ↓
+反弹
+    ↓
+再次下跌，但不跌破一买低点
+    ↓
+出现有力度的底分型
+    ↓
+二买即将形成
+    ↓
+底分型后K线突破高点 → 二买确认</div>
+            </div>
+
+            <!-- 六、卖出方法 -->
+            <div class="section">
+                <h2 class="section-title">六、卖出方法</h2>
+
+                <div class="principle-box">
+                    <h4>📤 卖出逻辑</h4>
+                    <p><strong>卖出是买入的反向操作</strong></p>
+                </div>
+
+                <div class="subsection">二卖确认</div>
+                <div class="code-box">上涨趋势
+    ↓
+出现一卖（最高点）
+    ↓
+回调
+    ↓
+再次上涨，但未突破一卖高点
+    ↓
+二卖形成 → 卖出信号</div>
+            </div>
+
+            <!-- 七、仓位管理 -->
+            <div class="section">
+                <h2 class="section-title">七、仓位管理</h2>
+
+                <div class="principle-box">
+                    <h4>💰 基本原则</h4>
+                    <p>• 完全基于<strong>技术点判断</strong></p>
+                    <p>• 不过多考虑仓位控制</p>
+                    <p>• 不过多考虑持有时机</p>
+                </div>
+
+                <table>
+                    <tr><th>情况</th><th>操作</th></tr>
+                    <tr><td>常规</td><td><strong>全仓进，全仓出</strong></td></tr>
+                    <tr><td>特殊情况</td><td>涨幅较大且感觉有风险时，减仓一半</td></tr>
+                </table>
+            </div>
+
+            <!-- 八、止损规则 -->
+            <div class="section">
+                <h2 class="section-title">八、止损规则</h2>
+
+                <div class="warning-box">
+                    <h4>⚠️ 止损背景</h4>
+                    <p>买入后可能失败：突破高点后很快跌回，甚至击穿前低</p>
+                </div>
+
+                <div class="subsection">双止损线规则</div>
+
+                <div class="step-box">
+                    <h4>第一止损线（常规止损）</h4>
+                    <p><strong>触发条件</strong>：</p>
+                    <p>• 二买底分型的<strong>最低点被跌破</strong></p>
+                    <p>• 跌破后<strong>没有快速收回</strong></p>
+                    <p>• → 触发止损</p>
+                </div>
+
+                <div class="danger-box">
+                    <h4>🚨 第二止损线（强止损）</h4>
+                    <p><strong>触发条件</strong>：</p>
+                    <p>• 买入后股票下跌</p>
+                    <p>• 跌破二买最低点后<strong>继续向下</strong></p>
+                    <p>• <strong>突破了一买最低点</strong></p>
+                    <p>• → <strong>无论损失多大，必须止损</strong></p>
+                </div>
+
+                <div class="subsection">止损逻辑图</div>
+                <div class="code-box">买入（二买确认）
+    ↓
+下跌
+    ↓
+跌破二买底分型低点？
+    ├─ 否 → 持有
+    └─ 是 → 是否快速收回？
+              ├─ 是 → 持有
+              └─ 否 → 第一止损线触发 → 止损
+                        ↓
+              继续下跌，跌破一买低点？
+              ├─ 否 → 等待观察
+              └─ 是 → 第二止损线触发 → 强制止损</div>
+            </div>
+
+            <!-- 九、QTS系统目标 -->
+            <div class="section">
+                <h2 class="section-title">九、QTS系统目标</h2>
+
+                <div class="flow-box">
+                    <h4>完整交易流程</h4>
+                    <div>1. 市场扫描 → 找出热点板块</div>
+                    <div class="flow-arrow">↓</div>
+                    <div>2. 选股筛选 → 用方法论筛选股票</div>
+                    <div class="flow-arrow">↓</div>
+                    <div>3. 自选监控 → 实时监控走势</div>
+                    <div class="flow-arrow">↓</div>
+                    <div>4. 买入执行 → 出现信号时买入</div>
+                    <div class="flow-arrow">↓</div>
+                    <div>5. 持仓监控 → 监控持仓走势</div>
+                    <div class="flow-arrow">↓</div>
+                    <div>6. 卖出执行 → 出现信号时卖出</div>
+                    <div class="flow-arrow">↓</div>
+                    <div>7. 止损执行 → 触及止损线时止损</div>
+                </div>
+            </div>
+
+            <!-- 十、核心理念总结 -->
+            <div class="section">
+                <h2 class="section-title">十、核心理念总结</h2>
+
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="label">技术框架</div>
+                        <div class="value">缠论（走势归类、买卖点、中枢）</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">选股起点</div>
+                        <div class="value">热门板块 + 领涨股票</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">核心筛选</div>
+                        <div class="value">近期可能产生买点的股票</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">买入方式</div>
+                        <div class="value">二买/类二买，右侧交易</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">买入确认</div>
+                        <div class="value">日线→15分钟→分时图</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">卖出方式</div>
+                        <div class="value">二卖确认</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">风险控制</div>
+                        <div class="value">双止损线</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="label">仓位管理</div>
+                        <div class="value">全仓进出</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div>基于2013年至今的实战经验总结 · 2026-06-07</div>
+        </div>
+    </div>
+</body>
+</html>

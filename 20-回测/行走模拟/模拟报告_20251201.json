@@ -1,0 +1,2329 @@
+{
+  "macro": {
+    "as_of": "2025-12-01",
+    "style": "震荡市",
+    "avg_return_20d": 1.89,
+    "up_ratio": 45.0,
+    "median_return_20d": -0.75,
+    "market_size": 4980,
+    "strategy_weight": {
+      "动量": 0.4,
+      "多因子": 0.6
+    }
+  },
+  "momentum_selections": [
+    {
+      "code": "bj920125",
+      "momentum_5d": 74.33,
+      "avg_volume": 85402,
+      "price": 87.2
+    },
+    {
+      "code": "sz301136",
+      "momentum_5d": 61.87,
+      "avg_volume": 653847,
+      "price": 26.87
+    },
+    {
+      "code": "sh688795",
+      "momentum_5d": 56.72,
+      "avg_volume": 14958620,
+      "price": 941.08
+    },
+    {
+      "code": "sz002300",
+      "momentum_5d": 46.53,
+      "avg_volume": 643746,
+      "price": 10.36
+    },
+    {
+      "code": "sh603696",
+      "momentum_5d": 46.39,
+      "avg_volume": 361825,
+      "price": 19.47
+    },
+    {
+      "code": "sh688809",
+      "momentum_5d": 45.91,
+      "avg_volume": 11553967,
+      "price": 329.77
+    },
+    {
+      "code": "sh600151",
+      "momentum_5d": 40.58,
+      "avg_volume": 1966847,
+      "price": 13.65
+    },
+    {
+      "code": "sz301148",
+      "momentum_5d": 39.69,
+      "avg_volume": 103770,
+      "price": 54.83
+    },
+    {
+      "code": "sz000547",
+      "momentum_5d": 38.43,
+      "avg_volume": 5080415,
+      "price": 20.57
+    },
+    {
+      "code": "sz002682",
+      "momentum_5d": 36.81,
+      "avg_volume": 788245,
+      "price": 7.88
+    },
+    {
+      "code": "sz301232",
+      "momentum_5d": 36.09,
+      "avg_volume": 69159,
+      "price": 55.62
+    },
+    {
+      "code": "sz002589",
+      "momentum_5d": 34.81,
+      "avg_volume": 1364851,
+      "price": 4.26
+    },
+    {
+      "code": "sz002565",
+      "momentum_5d": 34.77,
+      "avg_volume": 2054300,
+      "price": 11.9
+    },
+    {
+      "code": "sh601399",
+      "momentum_5d": 34.2,
+      "avg_volume": 3263668,
+      "price": 4.63
+    },
+    {
+      "code": "bj920156",
+      "momentum_5d": 33.94,
+      "avg_volume": 119318,
+      "price": 54.38
+    },
+    {
+      "code": "sh688820",
+      "momentum_5d": 31.9,
+      "avg_volume": 82533846,
+      "price": 101.1
+    },
+    {
+      "code": "sh603386",
+      "momentum_5d": 31.52,
+      "avg_volume": 164531,
+      "price": 16.65
+    },
+    {
+      "code": "sz300710",
+      "momentum_5d": 29.91,
+      "avg_volume": 154245,
+      "price": 34.53
+    },
+    {
+      "code": "sh688808",
+      "momentum_5d": 29.33,
+      "avg_volume": 7439436,
+      "price": 1033.33
+    },
+    {
+      "code": "sz002348",
+      "momentum_5d": 27.98,
+      "avg_volume": 890769,
+      "price": 6.77
+    }
+  ],
+  "multifactor_selections": [
+    {
+      "code": "sh688469",
+      "price": 6.69,
+      "trend_score": 2.0725,
+      "volatility": 1.35,
+      "vol_avg": 86960952,
+      "ma_score": -1.6022,
+      "composite_score": 66.22
+    },
+    {
+      "code": "sh688387",
+      "price": 12.15,
+      "trend_score": 26.2625,
+      "volatility": 6.06,
+      "vol_avg": 145230699,
+      "ma_score": -41.7323,
+      "composite_score": 65.2
+    },
+    {
+      "code": "sh688472",
+      "price": 16.54,
+      "trend_score": -1.2259,
+      "volatility": 2.83,
+      "vol_avg": 87392327,
+      "ma_score": -5.5857,
+      "composite_score": 61.59
+    },
+    {
+      "code": "sh688538",
+      "price": 2.72,
+      "trend_score": 0.0028,
+      "volatility": 0.94,
+      "vol_avg": 51308850,
+      "ma_score": -2.1213,
+      "composite_score": 60.31
+    },
+    {
+      "code": "sh688223",
+      "price": 5.72,
+      "trend_score": -0.0812,
+      "volatility": 1.61,
+      "vol_avg": 57171567,
+      "ma_score": -4.7331,
+      "composite_score": 59.41
+    },
+    {
+      "code": "sh688009",
+      "price": 5.48,
+      "trend_score": 2.8642,
+      "volatility": 0.75,
+      "vol_avg": 29141422,
+      "ma_score": -1.9819,
+      "composite_score": 57.67
+    },
+    {
+      "code": "sh688249",
+      "price": 34.04,
+      "trend_score": 8.919,
+      "volatility": 3.2,
+      "vol_avg": 43230669,
+      "ma_score": -2.1271,
+      "composite_score": 56.47
+    },
+    {
+      "code": "sh688599",
+      "price": 17.16,
+      "trend_score": -1.8937,
+      "volatility": 2.05,
+      "vol_avg": 43948343,
+      "ma_score": -2.3683,
+      "composite_score": 56.17
+    },
+    {
+      "code": "sh688981",
+      "price": 122.1,
+      "trend_score": 3.5401,
+      "volatility": 2.24,
+      "vol_avg": 40145415,
+      "ma_score": -5.2341,
+      "composite_score": 56.0
+    },
+    {
+      "code": "sh688126",
+      "price": 21.71,
+      "trend_score": -2.0168,
+      "volatility": 1.62,
+      "vol_avg": 34267694,
+      "ma_score": -1.3823,
+      "composite_score": 55.56
+    },
+    {
+      "code": "sh688403",
+      "price": 16.58,
+      "trend_score": 9.8762,
+      "volatility": 3.52,
+      "vol_avg": 37596514,
+      "ma_score": -3.4117,
+      "composite_score": 54.83
+    },
+    {
+      "code": "sh688425",
+      "price": 5.23,
+      "trend_score": 0.6058,
+      "volatility": 1.03,
+      "vol_avg": 18350190,
+      "ma_score": -3.5336,
+      "composite_score": 54.35
+    },
+    {
+      "code": "sh688779",
+      "price": 7.82,
+      "trend_score": 0.8729,
+      "volatility": 2.03,
+      "vol_avg": 34645563,
+      "ma_score": -9.5161,
+      "composite_score": 54.01
+    },
+    {
+      "code": "sh688008",
+      "price": 120.88,
+      "trend_score": 0.088,
+      "volatility": 1.8,
+      "vol_avg": 23564742,
+      "ma_score": -1.2442,
+      "composite_score": 53.91
+    },
+    {
+      "code": "sh688556",
+      "price": 11.15,
+      "trend_score": 3.8947,
+      "volatility": 2.54,
+      "vol_avg": 27449119,
+      "ma_score": -1.9522,
+      "composite_score": 53.87
+    },
+    {
+      "code": "sh688549",
+      "price": 9.29,
+      "trend_score": -0.3304,
+      "volatility": 1.39,
+      "vol_avg": 15514865,
+      "ma_score": -1.8138,
+      "composite_score": 53.17
+    },
+    {
+      "code": "sh600916",
+      "price": 8.08,
+      "trend_score": 0.1324,
+      "volatility": 0.34,
+      "vol_avg": 115491,
+      "ma_score": -0.1736,
+      "composite_score": 53.16
+    },
+    {
+      "code": "sh600905",
+      "price": 4.13,
+      "trend_score": -1.0107,
+      "volatility": 0.25,
+      "vol_avg": 713065,
+      "ma_score": -0.5059,
+      "composite_score": 53.09
+    },
+    {
+      "code": "sz000651",
+      "price": 39.76,
+      "trend_score": 0.1904,
+      "volatility": 0.42,
+      "vol_avg": 327008,
+      "ma_score": -0.1381,
+      "composite_score": 53.05
+    },
+    {
+      "code": "sz000538",
+      "price": 55.12,
+      "trend_score": 1.1481,
+      "volatility": 0.43,
+      "vol_avg": 62385,
+      "ma_score": -1.172,
+      "composite_score": 53.04
+    }
+  ],
+  "momentum_trades": [
+    {
+      "date": "2025-12-01",
+      "code": "sz301136",
+      "action": "买入",
+      "price": 16.6,
+      "shares": 4800,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sz002300",
+      "action": "买入",
+      "price": 7.07,
+      "shares": 11300,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh603696",
+      "action": "买入",
+      "price": 13.3,
+      "shares": 6000,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh600151",
+      "action": "买入",
+      "price": 9.71,
+      "shares": 8200,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sz301148",
+      "action": "买入",
+      "price": 39.25,
+      "shares": 2000,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sz000547",
+      "action": "买入",
+      "price": 14.86,
+      "shares": 5300,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sz002682",
+      "action": "买入",
+      "price": 5.76,
+      "shares": 13800,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sz301232",
+      "action": "买入",
+      "price": 40.87,
+      "shares": 1900,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sz002589",
+      "action": "买入",
+      "price": 3.16,
+      "shares": 25300,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sz002565",
+      "action": "买入",
+      "price": 8.83,
+      "shares": 9000,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh601399",
+      "action": "买入",
+      "price": 3.45,
+      "shares": 23100,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh603386",
+      "action": "买入",
+      "price": 12.66,
+      "shares": 6300,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sz300710",
+      "action": "买入",
+      "price": 26.58,
+      "shares": 3000,
+      "reason": "建仓"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sz301136",
+      "action": "卖出",
+      "price": 17.1,
+      "shares": 4800,
+      "pnl_pct": 3.01,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sz002300",
+      "action": "卖出",
+      "price": 8.7,
+      "shares": 11300,
+      "pnl_pct": 23.06,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sh603696",
+      "action": "卖出",
+      "price": 18.91,
+      "shares": 6000,
+      "pnl_pct": 42.18,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sh600151",
+      "action": "卖出",
+      "price": 15.01,
+      "shares": 8200,
+      "pnl_pct": 54.58,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sz301148",
+      "action": "卖出",
+      "price": 52.13,
+      "shares": 2000,
+      "pnl_pct": 32.82,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sz000547",
+      "action": "卖出",
+      "price": 29.44,
+      "shares": 5300,
+      "pnl_pct": 98.12,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sz002682",
+      "action": "卖出",
+      "price": 6.78,
+      "shares": 13800,
+      "pnl_pct": 17.71,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sz301232",
+      "action": "卖出",
+      "price": 165.15,
+      "shares": 1900,
+      "pnl_pct": 304.09,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sz002589",
+      "action": "卖出",
+      "price": 3.29,
+      "shares": 25300,
+      "pnl_pct": 4.11,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sz002565",
+      "action": "卖出",
+      "price": 16.32,
+      "shares": 9000,
+      "pnl_pct": 84.82,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sh601399",
+      "action": "卖出",
+      "price": 5.04,
+      "shares": 23100,
+      "pnl_pct": 46.09,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sh603386",
+      "action": "卖出",
+      "price": 14.23,
+      "shares": 6300,
+      "pnl_pct": 12.4,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sz300710",
+      "action": "卖出",
+      "price": 29.9,
+      "shares": 3000,
+      "pnl_pct": 12.49,
+      "reason": "调仓卖出"
+    }
+  ],
+  "multifactor_trades": [
+    {
+      "date": "2025-12-01",
+      "code": "sh688469",
+      "action": "买入",
+      "price": 6.52,
+      "shares": 12200,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh688387",
+      "action": "买入",
+      "price": 7.1,
+      "shares": 11200,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh688472",
+      "action": "买入",
+      "price": 16.01,
+      "shares": 4900,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh688538",
+      "action": "买入",
+      "price": 2.69,
+      "shares": 29700,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh688223",
+      "action": "买入",
+      "price": 5.71,
+      "shares": 14000,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh688009",
+      "action": "买入",
+      "price": 5.23,
+      "shares": 15200,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh688249",
+      "action": "买入",
+      "price": 30.6,
+      "shares": 2600,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh688599",
+      "action": "买入",
+      "price": 17.68,
+      "shares": 4500,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh688981",
+      "action": "买入",
+      "price": 114.4,
+      "shares": 600,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh688126",
+      "action": "买入",
+      "price": 22.15,
+      "shares": 3600,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh688403",
+      "action": "买入",
+      "price": 14.72,
+      "shares": 5400,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh688425",
+      "action": "买入",
+      "price": 5.08,
+      "shares": 15700,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh688779",
+      "action": "买入",
+      "price": 7.45,
+      "shares": 10700,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh688008",
+      "action": "买入",
+      "price": 120.45,
+      "shares": 600,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh688556",
+      "action": "买入",
+      "price": 10.81,
+      "shares": 7400,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh688549",
+      "action": "买入",
+      "price": 9.46,
+      "shares": 8400,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh600916",
+      "action": "买入",
+      "price": 8.11,
+      "shares": 9800,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sh600905",
+      "action": "买入",
+      "price": 4.19,
+      "shares": 19000,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sz000651",
+      "action": "买入",
+      "price": 39.85,
+      "shares": 2000,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-01",
+      "code": "sz000538",
+      "action": "买入",
+      "price": 54.0,
+      "shares": 1400,
+      "reason": "建仓"
+    },
+    {
+      "date": "2025-12-04",
+      "code": "sh688223",
+      "action": "卖出",
+      "price": 5.34,
+      "shares": 14000,
+      "pnl_pct": -6.48,
+      "reason": "止损-5%"
+    },
+    {
+      "date": "2025-12-04",
+      "code": "sh688599",
+      "action": "卖出",
+      "price": 16.57,
+      "shares": 4500,
+      "pnl_pct": -6.28,
+      "reason": "止损-5%"
+    },
+    {
+      "date": "2025-12-04",
+      "code": "sh688779",
+      "action": "卖出",
+      "price": 7.07,
+      "shares": 10700,
+      "pnl_pct": -5.1,
+      "reason": "止损-5%"
+    },
+    {
+      "date": "2025-12-11",
+      "code": "sh688549",
+      "action": "卖出",
+      "price": 8.89,
+      "shares": 8400,
+      "pnl_pct": -6.03,
+      "reason": "止损-5%"
+    },
+    {
+      "date": "2025-12-15",
+      "code": "sh688126",
+      "action": "卖出",
+      "price": 20.72,
+      "shares": 3600,
+      "pnl_pct": -6.46,
+      "reason": "止损-5%"
+    },
+    {
+      "date": "2025-12-16",
+      "code": "sh688472",
+      "action": "卖出",
+      "price": 14.82,
+      "shares": 4900,
+      "pnl_pct": -7.43,
+      "reason": "止损-5%"
+    },
+    {
+      "date": "2025-12-16",
+      "code": "sh688008",
+      "action": "卖出",
+      "price": 113.57,
+      "shares": 600,
+      "pnl_pct": -5.71,
+      "reason": "止损-5%"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sh688469",
+      "action": "卖出",
+      "price": 7.2,
+      "shares": 12200,
+      "pnl_pct": 10.43,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sh688387",
+      "action": "卖出",
+      "price": 17.19,
+      "shares": 11200,
+      "pnl_pct": 142.11,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sh688538",
+      "action": "卖出",
+      "price": 2.56,
+      "shares": 29700,
+      "pnl_pct": -4.83,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sh688009",
+      "action": "卖出",
+      "price": 5.44,
+      "shares": 15200,
+      "pnl_pct": 4.02,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sh688249",
+      "action": "卖出",
+      "price": 33.52,
+      "shares": 2600,
+      "pnl_pct": 9.54,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sh688981",
+      "action": "卖出",
+      "price": 117.06,
+      "shares": 600,
+      "pnl_pct": 2.33,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sh688403",
+      "action": "卖出",
+      "price": 18.62,
+      "shares": 5400,
+      "pnl_pct": 26.49,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sh688425",
+      "action": "卖出",
+      "price": 5.18,
+      "shares": 15700,
+      "pnl_pct": 1.97,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sh688556",
+      "action": "卖出",
+      "price": 13.81,
+      "shares": 7400,
+      "pnl_pct": 27.75,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sh600916",
+      "action": "卖出",
+      "price": 13.21,
+      "shares": 9800,
+      "pnl_pct": 62.89,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sh600905",
+      "action": "卖出",
+      "price": 4.09,
+      "shares": 19000,
+      "pnl_pct": -2.39,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sz000651",
+      "action": "卖出",
+      "price": 38.54,
+      "shares": 2000,
+      "pnl_pct": -3.29,
+      "reason": "调仓卖出"
+    },
+    {
+      "date": "2026-02-02",
+      "code": "sz000538",
+      "action": "卖出",
+      "price": 53.93,
+      "shares": 1400,
+      "pnl_pct": -0.13,
+      "reason": "调仓卖出"
+    }
+  ],
+  "momentum_portfolio": [
+    {
+      "date": "2025-12-01",
+      "avg_price": 15.55,
+      "stock_count": 13,
+      "return_pct": 0.0
+    },
+    {
+      "date": "2025-12-02",
+      "avg_price": 16.0,
+      "stock_count": 14,
+      "return_pct": 2.89
+    },
+    {
+      "date": "2025-12-03",
+      "avg_price": 17.18,
+      "stock_count": 14,
+      "return_pct": 10.48
+    },
+    {
+      "date": "2025-12-04",
+      "avg_price": 18.42,
+      "stock_count": 13,
+      "return_pct": 18.46
+    },
+    {
+      "date": "2025-12-05",
+      "avg_price": 60.96,
+      "stock_count": 14,
+      "return_pct": 292.03
+    },
+    {
+      "date": "2025-12-08",
+      "avg_price": 61.75,
+      "stock_count": 14,
+      "return_pct": 297.11
+    },
+    {
+      "date": "2025-12-09",
+      "avg_price": 64.68,
+      "stock_count": 14,
+      "return_pct": 315.95
+    },
+    {
+      "date": "2025-12-10",
+      "avg_price": 71.92,
+      "stock_count": 14,
+      "return_pct": 362.51
+    },
+    {
+      "date": "2025-12-11",
+      "avg_price": 86.21,
+      "stock_count": 14,
+      "return_pct": 454.41
+    },
+    {
+      "date": "2025-12-12",
+      "avg_price": 77.88,
+      "stock_count": 14,
+      "return_pct": 400.84
+    },
+    {
+      "date": "2025-12-15",
+      "avg_price": 74.85,
+      "stock_count": 14,
+      "return_pct": 381.35
+    },
+    {
+      "date": "2025-12-16",
+      "avg_price": 70.47,
+      "stock_count": 14,
+      "return_pct": 353.18
+    },
+    {
+      "date": "2025-12-17",
+      "avg_price": 70.03,
+      "stock_count": 14,
+      "return_pct": 350.35
+    },
+    {
+      "date": "2025-12-18",
+      "avg_price": 66.88,
+      "stock_count": 15,
+      "return_pct": 330.1
+    },
+    {
+      "date": "2025-12-19",
+      "avg_price": 64.94,
+      "stock_count": 15,
+      "return_pct": 317.62
+    },
+    {
+      "date": "2025-12-22",
+      "avg_price": 65.05,
+      "stock_count": 15,
+      "return_pct": 318.33
+    },
+    {
+      "date": "2025-12-23",
+      "avg_price": 65.09,
+      "stock_count": 15,
+      "return_pct": 318.59
+    },
+    {
+      "date": "2025-12-24",
+      "avg_price": 63.4,
+      "stock_count": 15,
+      "return_pct": 307.72
+    },
+    {
+      "date": "2025-12-25",
+      "avg_price": 63.34,
+      "stock_count": 15,
+      "return_pct": 307.33
+    },
+    {
+      "date": "2025-12-26",
+      "avg_price": 63.2,
+      "stock_count": 15,
+      "return_pct": 306.43
+    },
+    {
+      "date": "2025-12-29",
+      "avg_price": 63.58,
+      "stock_count": 15,
+      "return_pct": 308.87
+    },
+    {
+      "date": "2025-12-30",
+      "avg_price": 73.06,
+      "stock_count": 16,
+      "return_pct": 369.84
+    },
+    {
+      "date": "2025-12-31",
+      "avg_price": 74.98,
+      "stock_count": 16,
+      "return_pct": 382.19
+    },
+    {
+      "date": "2026-01-05",
+      "avg_price": 79.67,
+      "stock_count": 16,
+      "return_pct": 412.35
+    },
+    {
+      "date": "2026-01-06",
+      "avg_price": 79.81,
+      "stock_count": 16,
+      "return_pct": 413.25
+    },
+    {
+      "date": "2026-01-07",
+      "avg_price": 82.48,
+      "stock_count": 16,
+      "return_pct": 430.42
+    },
+    {
+      "date": "2026-01-08",
+      "avg_price": 86.68,
+      "stock_count": 16,
+      "return_pct": 457.43
+    },
+    {
+      "date": "2026-01-09",
+      "avg_price": 89.21,
+      "stock_count": 16,
+      "return_pct": 473.7
+    },
+    {
+      "date": "2026-01-12",
+      "avg_price": 89.84,
+      "stock_count": 16,
+      "return_pct": 477.75
+    },
+    {
+      "date": "2026-01-13",
+      "avg_price": 88.32,
+      "stock_count": 16,
+      "return_pct": 467.97
+    },
+    {
+      "date": "2026-01-14",
+      "avg_price": 87.8,
+      "stock_count": 16,
+      "return_pct": 464.63
+    },
+    {
+      "date": "2026-01-15",
+      "avg_price": 86.56,
+      "stock_count": 16,
+      "return_pct": 456.66
+    },
+    {
+      "date": "2026-01-16",
+      "avg_price": 86.98,
+      "stock_count": 16,
+      "return_pct": 459.36
+    },
+    {
+      "date": "2026-01-19",
+      "avg_price": 85.42,
+      "stock_count": 16,
+      "return_pct": 449.32
+    },
+    {
+      "date": "2026-01-20",
+      "avg_price": 83.56,
+      "stock_count": 16,
+      "return_pct": 437.36
+    },
+    {
+      "date": "2026-01-21",
+      "avg_price": 83.84,
+      "stock_count": 16,
+      "return_pct": 439.16
+    },
+    {
+      "date": "2026-01-22",
+      "avg_price": 83.78,
+      "stock_count": 16,
+      "return_pct": 438.78
+    },
+    {
+      "date": "2026-01-23",
+      "avg_price": 85.63,
+      "stock_count": 16,
+      "return_pct": 450.68
+    },
+    {
+      "date": "2026-01-26",
+      "avg_price": 83.54,
+      "stock_count": 16,
+      "return_pct": 437.23
+    },
+    {
+      "date": "2026-01-27",
+      "avg_price": 85.46,
+      "stock_count": 16,
+      "return_pct": 449.58
+    },
+    {
+      "date": "2026-01-28",
+      "avg_price": 83.91,
+      "stock_count": 16,
+      "return_pct": 439.61
+    },
+    {
+      "date": "2026-01-29",
+      "avg_price": 81.7,
+      "stock_count": 16,
+      "return_pct": 425.4
+    },
+    {
+      "date": "2026-01-30",
+      "avg_price": 81.89,
+      "stock_count": 16,
+      "return_pct": 426.62
+    },
+    {
+      "date": "2026-02-02",
+      "avg_price": 79.23,
+      "stock_count": 16,
+      "return_pct": 409.52
+    },
+    {
+      "date": "2026-02-03",
+      "avg_price": 81.78,
+      "stock_count": 16,
+      "return_pct": 425.92
+    },
+    {
+      "date": "2026-02-04",
+      "avg_price": 78.9,
+      "stock_count": 16,
+      "return_pct": 407.4
+    },
+    {
+      "date": "2026-02-05",
+      "avg_price": 78.37,
+      "stock_count": 16,
+      "return_pct": 403.99
+    },
+    {
+      "date": "2026-02-06",
+      "avg_price": 76.77,
+      "stock_count": 16,
+      "return_pct": 393.7
+    },
+    {
+      "date": "2026-02-09",
+      "avg_price": 81.35,
+      "stock_count": 16,
+      "return_pct": 423.15
+    },
+    {
+      "date": "2026-02-10",
+      "avg_price": 80.4,
+      "stock_count": 16,
+      "return_pct": 417.04
+    },
+    {
+      "date": "2026-02-11",
+      "avg_price": 78.53,
+      "stock_count": 16,
+      "return_pct": 405.02
+    },
+    {
+      "date": "2026-02-12",
+      "avg_price": 79.44,
+      "stock_count": 16,
+      "return_pct": 410.87
+    },
+    {
+      "date": "2026-02-13",
+      "avg_price": 79.5,
+      "stock_count": 16,
+      "return_pct": 411.25
+    },
+    {
+      "date": "2026-02-24",
+      "avg_price": 80.42,
+      "stock_count": 16,
+      "return_pct": 417.17
+    },
+    {
+      "date": "2026-02-25",
+      "avg_price": 81.93,
+      "stock_count": 16,
+      "return_pct": 426.88
+    },
+    {
+      "date": "2026-02-26",
+      "avg_price": 84.64,
+      "stock_count": 16,
+      "return_pct": 444.31
+    },
+    {
+      "date": "2026-02-27",
+      "avg_price": 85.32,
+      "stock_count": 16,
+      "return_pct": 448.68
+    },
+    {
+      "date": "2026-03-02",
+      "avg_price": 82.71,
+      "stock_count": 16,
+      "return_pct": 431.9
+    },
+    {
+      "date": "2026-03-03",
+      "avg_price": 76.63,
+      "stock_count": 16,
+      "return_pct": 392.8
+    },
+    {
+      "date": "2026-03-04",
+      "avg_price": 78.02,
+      "stock_count": 16,
+      "return_pct": 401.74
+    },
+    {
+      "date": "2026-03-05",
+      "avg_price": 83.0,
+      "stock_count": 16,
+      "return_pct": 433.76
+    },
+    {
+      "date": "2026-03-06",
+      "avg_price": 82.47,
+      "stock_count": 16,
+      "return_pct": 430.35
+    },
+    {
+      "date": "2026-03-09",
+      "avg_price": 80.23,
+      "stock_count": 16,
+      "return_pct": 415.95
+    },
+    {
+      "date": "2026-03-10",
+      "avg_price": 82.65,
+      "stock_count": 16,
+      "return_pct": 431.51
+    },
+    {
+      "date": "2026-03-11",
+      "avg_price": 81.52,
+      "stock_count": 16,
+      "return_pct": 424.24
+    },
+    {
+      "date": "2026-03-12",
+      "avg_price": 78.95,
+      "stock_count": 16,
+      "return_pct": 407.72
+    },
+    {
+      "date": "2026-03-13",
+      "avg_price": 77.21,
+      "stock_count": 16,
+      "return_pct": 396.53
+    },
+    {
+      "date": "2026-03-16",
+      "avg_price": 78.08,
+      "stock_count": 16,
+      "return_pct": 402.12
+    },
+    {
+      "date": "2026-03-17",
+      "avg_price": 76.77,
+      "stock_count": 16,
+      "return_pct": 393.7
+    },
+    {
+      "date": "2026-03-18",
+      "avg_price": 79.33,
+      "stock_count": 16,
+      "return_pct": 410.16
+    },
+    {
+      "date": "2026-03-19",
+      "avg_price": 77.38,
+      "stock_count": 16,
+      "return_pct": 397.62
+    },
+    {
+      "date": "2026-03-20",
+      "avg_price": 76.38,
+      "stock_count": 16,
+      "return_pct": 391.19
+    },
+    {
+      "date": "2026-03-23",
+      "avg_price": 72.01,
+      "stock_count": 16,
+      "return_pct": 363.09
+    },
+    {
+      "date": "2026-03-24",
+      "avg_price": 75.64,
+      "stock_count": 16,
+      "return_pct": 386.43
+    },
+    {
+      "date": "2026-03-25",
+      "avg_price": 76.78,
+      "stock_count": 16,
+      "return_pct": 393.76
+    },
+    {
+      "date": "2026-03-26",
+      "avg_price": 74.59,
+      "stock_count": 16,
+      "return_pct": 379.68
+    },
+    {
+      "date": "2026-03-27",
+      "avg_price": 74.33,
+      "stock_count": 16,
+      "return_pct": 378.01
+    },
+    {
+      "date": "2026-03-30",
+      "avg_price": 75.87,
+      "stock_count": 16,
+      "return_pct": 387.91
+    },
+    {
+      "date": "2026-03-31",
+      "avg_price": 74.92,
+      "stock_count": 16,
+      "return_pct": 381.8
+    },
+    {
+      "date": "2026-04-01",
+      "avg_price": 77.11,
+      "stock_count": 16,
+      "return_pct": 395.88
+    },
+    {
+      "date": "2026-04-02",
+      "avg_price": 75.33,
+      "stock_count": 16,
+      "return_pct": 384.44
+    },
+    {
+      "date": "2026-04-03",
+      "avg_price": 75.57,
+      "stock_count": 16,
+      "return_pct": 385.98
+    },
+    {
+      "date": "2026-04-07",
+      "avg_price": 76.43,
+      "stock_count": 16,
+      "return_pct": 391.51
+    },
+    {
+      "date": "2026-04-08",
+      "avg_price": 80.22,
+      "stock_count": 16,
+      "return_pct": 415.88
+    },
+    {
+      "date": "2026-04-09",
+      "avg_price": 79.62,
+      "stock_count": 16,
+      "return_pct": 412.03
+    },
+    {
+      "date": "2026-04-10",
+      "avg_price": 79.43,
+      "stock_count": 16,
+      "return_pct": 410.8
+    },
+    {
+      "date": "2026-04-13",
+      "avg_price": 80.67,
+      "stock_count": 16,
+      "return_pct": 418.78
+    },
+    {
+      "date": "2026-04-14",
+      "avg_price": 82.78,
+      "stock_count": 16,
+      "return_pct": 432.35
+    },
+    {
+      "date": "2026-04-15",
+      "avg_price": 85.49,
+      "stock_count": 16,
+      "return_pct": 449.77
+    },
+    {
+      "date": "2026-04-16",
+      "avg_price": 87.94,
+      "stock_count": 16,
+      "return_pct": 465.53
+    },
+    {
+      "date": "2026-04-17",
+      "avg_price": 91.58,
+      "stock_count": 16,
+      "return_pct": 488.94
+    },
+    {
+      "date": "2026-04-20",
+      "avg_price": 91.27,
+      "stock_count": 16,
+      "return_pct": 486.95
+    },
+    {
+      "date": "2026-04-21",
+      "avg_price": 89.02,
+      "stock_count": 17,
+      "return_pct": 472.48
+    },
+    {
+      "date": "2026-04-22",
+      "avg_price": 92.09,
+      "stock_count": 17,
+      "return_pct": 492.22
+    },
+    {
+      "date": "2026-04-23",
+      "avg_price": 88.06,
+      "stock_count": 17,
+      "return_pct": 466.3
+    },
+    {
+      "date": "2026-04-24",
+      "avg_price": 125.04,
+      "stock_count": 19,
+      "return_pct": 704.12
+    },
+    {
+      "date": "2026-04-27",
+      "avg_price": 129.15,
+      "stock_count": 20,
+      "return_pct": 730.55
+    },
+    {
+      "date": "2026-04-28",
+      "avg_price": 127.47,
+      "stock_count": 20,
+      "return_pct": 719.74
+    },
+    {
+      "date": "2026-04-29",
+      "avg_price": 130.41,
+      "stock_count": 20,
+      "return_pct": 738.65
+    },
+    {
+      "date": "2026-04-30",
+      "avg_price": 140.28,
+      "stock_count": 20,
+      "return_pct": 802.12
+    },
+    {
+      "date": "2026-05-06",
+      "avg_price": 143.09,
+      "stock_count": 20,
+      "return_pct": 820.19
+    },
+    {
+      "date": "2026-05-07",
+      "avg_price": 150.53,
+      "stock_count": 20,
+      "return_pct": 868.04
+    },
+    {
+      "date": "2026-05-08",
+      "avg_price": 148.55,
+      "stock_count": 20,
+      "return_pct": 855.31
+    },
+    {
+      "date": "2026-05-11",
+      "avg_price": 156.28,
+      "stock_count": 20,
+      "return_pct": 905.02
+    },
+    {
+      "date": "2026-05-12",
+      "avg_price": 151.8,
+      "stock_count": 20,
+      "return_pct": 876.21
+    },
+    {
+      "date": "2026-05-13",
+      "avg_price": 154.95,
+      "stock_count": 20,
+      "return_pct": 896.46
+    },
+    {
+      "date": "2026-05-14",
+      "avg_price": 148.91,
+      "stock_count": 20,
+      "return_pct": 857.62
+    },
+    {
+      "date": "2026-05-15",
+      "avg_price": 154.78,
+      "stock_count": 20,
+      "return_pct": 895.37
+    },
+    {
+      "date": "2026-05-18",
+      "avg_price": 165.83,
+      "stock_count": 20,
+      "return_pct": 966.43
+    },
+    {
+      "date": "2026-05-19",
+      "avg_price": 169.25,
+      "stock_count": 20,
+      "return_pct": 988.42
+    },
+    {
+      "date": "2026-05-20",
+      "avg_price": 181.65,
+      "stock_count": 20,
+      "return_pct": 1068.17
+    },
+    {
+      "date": "2026-05-21",
+      "avg_price": 172.86,
+      "stock_count": 20,
+      "return_pct": 1011.64
+    },
+    {
+      "date": "2026-05-22",
+      "avg_price": 186.1,
+      "stock_count": 20,
+      "return_pct": 1096.78
+    },
+    {
+      "date": "2026-05-25",
+      "avg_price": 193.77,
+      "stock_count": 20,
+      "return_pct": 1146.11
+    },
+    {
+      "date": "2026-05-26",
+      "avg_price": 191.58,
+      "stock_count": 20,
+      "return_pct": 1132.03
+    },
+    {
+      "date": "2026-05-27",
+      "avg_price": 188.55,
+      "stock_count": 20,
+      "return_pct": 1112.54
+    },
+    {
+      "date": "2026-05-28",
+      "avg_price": 194.3,
+      "stock_count": 20,
+      "return_pct": 1149.52
+    },
+    {
+      "date": "2026-05-29",
+      "avg_price": 180.75,
+      "stock_count": 20,
+      "return_pct": 1062.38
+    },
+    {
+      "date": "2026-06-01",
+      "avg_price": 172.73,
+      "stock_count": 20,
+      "return_pct": 1010.8
+    },
+    {
+      "date": "2026-06-02",
+      "avg_price": 187.92,
+      "stock_count": 20,
+      "return_pct": 1108.49
+    }
+  ],
+  "multifactor_portfolio": [
+    {
+      "date": "2025-12-01",
+      "avg_price": 25.11,
+      "stock_count": 20,
+      "return_pct": 0.0
+    },
+    {
+      "date": "2025-12-02",
+      "avg_price": 24.83,
+      "stock_count": 20,
+      "return_pct": -1.12
+    },
+    {
+      "date": "2025-12-03",
+      "avg_price": 24.7,
+      "stock_count": 20,
+      "return_pct": -1.63
+    },
+    {
+      "date": "2025-12-04",
+      "avg_price": 24.96,
+      "stock_count": 20,
+      "return_pct": -0.6
+    },
+    {
+      "date": "2025-12-05",
+      "avg_price": 25.0,
+      "stock_count": 20,
+      "return_pct": -0.44
+    },
+    {
+      "date": "2025-12-08",
+      "avg_price": 25.49,
+      "stock_count": 20,
+      "return_pct": 1.51
+    },
+    {
+      "date": "2025-12-09",
+      "avg_price": 25.31,
+      "stock_count": 20,
+      "return_pct": 0.8
+    },
+    {
+      "date": "2025-12-10",
+      "avg_price": 25.25,
+      "stock_count": 20,
+      "return_pct": 0.56
+    },
+    {
+      "date": "2025-12-11",
+      "avg_price": 25.02,
+      "stock_count": 20,
+      "return_pct": -0.36
+    },
+    {
+      "date": "2025-12-12",
+      "avg_price": 25.41,
+      "stock_count": 20,
+      "return_pct": 1.19
+    },
+    {
+      "date": "2025-12-15",
+      "avg_price": 24.9,
+      "stock_count": 20,
+      "return_pct": -0.84
+    },
+    {
+      "date": "2025-12-16",
+      "avg_price": 24.56,
+      "stock_count": 20,
+      "return_pct": -2.19
+    },
+    {
+      "date": "2025-12-17",
+      "avg_price": 25.16,
+      "stock_count": 20,
+      "return_pct": 0.2
+    },
+    {
+      "date": "2025-12-18",
+      "avg_price": 25.08,
+      "stock_count": 20,
+      "return_pct": -0.12
+    },
+    {
+      "date": "2025-12-19",
+      "avg_price": 25.22,
+      "stock_count": 20,
+      "return_pct": 0.44
+    },
+    {
+      "date": "2025-12-22",
+      "avg_price": 25.84,
+      "stock_count": 20,
+      "return_pct": 2.91
+    },
+    {
+      "date": "2025-12-23",
+      "avg_price": 25.81,
+      "stock_count": 20,
+      "return_pct": 2.79
+    },
+    {
+      "date": "2025-12-24",
+      "avg_price": 26.12,
+      "stock_count": 20,
+      "return_pct": 4.02
+    },
+    {
+      "date": "2025-12-25",
+      "avg_price": 26.14,
+      "stock_count": 20,
+      "return_pct": 4.1
+    },
+    {
+      "date": "2025-12-26",
+      "avg_price": 26.12,
+      "stock_count": 20,
+      "return_pct": 4.02
+    },
+    {
+      "date": "2025-12-29",
+      "avg_price": 25.96,
+      "stock_count": 20,
+      "return_pct": 3.39
+    },
+    {
+      "date": "2025-12-30",
+      "avg_price": 26.09,
+      "stock_count": 20,
+      "return_pct": 3.9
+    },
+    {
+      "date": "2025-12-31",
+      "avg_price": 25.82,
+      "stock_count": 20,
+      "return_pct": 2.83
+    },
+    {
+      "date": "2026-01-05",
+      "avg_price": 26.9,
+      "stock_count": 20,
+      "return_pct": 7.13
+    },
+    {
+      "date": "2026-01-06",
+      "avg_price": 27.54,
+      "stock_count": 20,
+      "return_pct": 9.68
+    },
+    {
+      "date": "2026-01-07",
+      "avg_price": 27.7,
+      "stock_count": 20,
+      "return_pct": 10.31
+    },
+    {
+      "date": "2026-01-08",
+      "avg_price": 27.72,
+      "stock_count": 20,
+      "return_pct": 10.39
+    },
+    {
+      "date": "2026-01-09",
+      "avg_price": 27.76,
+      "stock_count": 20,
+      "return_pct": 10.55
+    },
+    {
+      "date": "2026-01-12",
+      "avg_price": 28.04,
+      "stock_count": 20,
+      "return_pct": 11.67
+    },
+    {
+      "date": "2026-01-13",
+      "avg_price": 27.51,
+      "stock_count": 20,
+      "return_pct": 9.56
+    },
+    {
+      "date": "2026-01-14",
+      "avg_price": 27.72,
+      "stock_count": 20,
+      "return_pct": 10.39
+    },
+    {
+      "date": "2026-01-15",
+      "avg_price": 27.81,
+      "stock_count": 20,
+      "return_pct": 10.75
+    },
+    {
+      "date": "2026-01-16",
+      "avg_price": 28.82,
+      "stock_count": 20,
+      "return_pct": 14.77
+    },
+    {
+      "date": "2026-01-19",
+      "avg_price": 28.54,
+      "stock_count": 20,
+      "return_pct": 13.66
+    },
+    {
+      "date": "2026-01-20",
+      "avg_price": 28.44,
+      "stock_count": 20,
+      "return_pct": 13.26
+    },
+    {
+      "date": "2026-01-21",
+      "avg_price": 29.57,
+      "stock_count": 20,
+      "return_pct": 17.76
+    },
+    {
+      "date": "2026-01-22",
+      "avg_price": 29.89,
+      "stock_count": 20,
+      "return_pct": 19.04
+    },
+    {
+      "date": "2026-01-23",
+      "avg_price": 30.12,
+      "stock_count": 20,
+      "return_pct": 19.95
+    },
+    {
+      "date": "2026-01-26",
+      "avg_price": 29.68,
+      "stock_count": 20,
+      "return_pct": 18.2
+    },
+    {
+      "date": "2026-01-27",
+      "avg_price": 30.3,
+      "stock_count": 20,
+      "return_pct": 20.67
+    },
+    {
+      "date": "2026-01-28",
+      "avg_price": 30.64,
+      "stock_count": 20,
+      "return_pct": 22.02
+    },
+    {
+      "date": "2026-01-29",
+      "avg_price": 29.68,
+      "stock_count": 20,
+      "return_pct": 18.2
+    },
+    {
+      "date": "2026-01-30",
+      "avg_price": 30.48,
+      "stock_count": 20,
+      "return_pct": 21.39
+    },
+    {
+      "date": "2026-02-02",
+      "avg_price": 29.4,
+      "stock_count": 20,
+      "return_pct": 17.08
+    },
+    {
+      "date": "2026-02-03",
+      "avg_price": 29.97,
+      "stock_count": 20,
+      "return_pct": 19.35
+    },
+    {
+      "date": "2026-02-04",
+      "avg_price": 29.56,
+      "stock_count": 20,
+      "return_pct": 17.72
+    },
+    {
+      "date": "2026-02-05",
+      "avg_price": 28.89,
+      "stock_count": 20,
+      "return_pct": 15.05
+    },
+    {
+      "date": "2026-02-06",
+      "avg_price": 28.73,
+      "stock_count": 20,
+      "return_pct": 14.42
+    },
+    {
+      "date": "2026-02-09",
+      "avg_price": 29.66,
+      "stock_count": 20,
+      "return_pct": 18.12
+    },
+    {
+      "date": "2026-02-10",
+      "avg_price": 29.74,
+      "stock_count": 20,
+      "return_pct": 18.44
+    },
+    {
+      "date": "2026-02-11",
+      "avg_price": 29.15,
+      "stock_count": 20,
+      "return_pct": 16.09
+    },
+    {
+      "date": "2026-02-12",
+      "avg_price": 29.15,
+      "stock_count": 20,
+      "return_pct": 16.09
+    },
+    {
+      "date": "2026-02-13",
+      "avg_price": 28.92,
+      "stock_count": 20,
+      "return_pct": 15.17
+    },
+    {
+      "date": "2026-02-24",
+      "avg_price": 29.47,
+      "stock_count": 20,
+      "return_pct": 17.36
+    },
+    {
+      "date": "2026-02-25",
+      "avg_price": 29.51,
+      "stock_count": 20,
+      "return_pct": 17.52
+    },
+    {
+      "date": "2026-02-26",
+      "avg_price": 29.27,
+      "stock_count": 20,
+      "return_pct": 16.57
+    },
+    {
+      "date": "2026-02-27",
+      "avg_price": 29.1,
+      "stock_count": 20,
+      "return_pct": 15.89
+    },
+    {
+      "date": "2026-03-02",
+      "avg_price": 28.51,
+      "stock_count": 20,
+      "return_pct": 13.54
+    },
+    {
+      "date": "2026-03-03",
+      "avg_price": 27.15,
+      "stock_count": 20,
+      "return_pct": 8.12
+    },
+    {
+      "date": "2026-03-04",
+      "avg_price": 27.01,
+      "stock_count": 20,
+      "return_pct": 7.57
+    },
+    {
+      "date": "2026-03-05",
+      "avg_price": 27.32,
+      "stock_count": 20,
+      "return_pct": 8.8
+    },
+    {
+      "date": "2026-03-06",
+      "avg_price": 27.37,
+      "stock_count": 20,
+      "return_pct": 9.0
+    },
+    {
+      "date": "2026-03-09",
+      "avg_price": 27.05,
+      "stock_count": 20,
+      "return_pct": 7.73
+    },
+    {
+      "date": "2026-03-10",
+      "avg_price": 27.72,
+      "stock_count": 20,
+      "return_pct": 10.39
+    },
+    {
+      "date": "2026-03-11",
+      "avg_price": 27.65,
+      "stock_count": 20,
+      "return_pct": 10.12
+    },
+    {
+      "date": "2026-03-12",
+      "avg_price": 27.39,
+      "stock_count": 20,
+      "return_pct": 9.08
+    },
+    {
+      "date": "2026-03-13",
+      "avg_price": 27.22,
+      "stock_count": 20,
+      "return_pct": 8.4
+    },
+    {
+      "date": "2026-03-16",
+      "avg_price": 27.54,
+      "stock_count": 20,
+      "return_pct": 9.68
+    },
+    {
+      "date": "2026-03-17",
+      "avg_price": 26.82,
+      "stock_count": 20,
+      "return_pct": 6.81
+    },
+    {
+      "date": "2026-03-18",
+      "avg_price": 27.37,
+      "stock_count": 20,
+      "return_pct": 9.0
+    },
+    {
+      "date": "2026-03-19",
+      "avg_price": 26.88,
+      "stock_count": 20,
+      "return_pct": 7.05
+    },
+    {
+      "date": "2026-03-20",
+      "avg_price": 26.36,
+      "stock_count": 20,
+      "return_pct": 4.98
+    },
+    {
+      "date": "2026-03-23",
+      "avg_price": 25.2,
+      "stock_count": 20,
+      "return_pct": 0.36
+    },
+    {
+      "date": "2026-03-24",
+      "avg_price": 25.49,
+      "stock_count": 20,
+      "return_pct": 1.51
+    },
+    {
+      "date": "2026-03-25",
+      "avg_price": 25.86,
+      "stock_count": 20,
+      "return_pct": 2.99
+    },
+    {
+      "date": "2026-03-26",
+      "avg_price": 25.18,
+      "stock_count": 20,
+      "return_pct": 0.28
+    },
+    {
+      "date": "2026-03-27",
+      "avg_price": 25.23,
+      "stock_count": 20,
+      "return_pct": 0.48
+    },
+    {
+      "date": "2026-03-30",
+      "avg_price": 24.84,
+      "stock_count": 20,
+      "return_pct": -1.08
+    },
+    {
+      "date": "2026-03-31",
+      "avg_price": 24.2,
+      "stock_count": 20,
+      "return_pct": -3.62
+    },
+    {
+      "date": "2026-04-01",
+      "avg_price": 24.85,
+      "stock_count": 20,
+      "return_pct": -1.04
+    },
+    {
+      "date": "2026-04-02",
+      "avg_price": 24.49,
+      "stock_count": 20,
+      "return_pct": -2.47
+    },
+    {
+      "date": "2026-04-03",
+      "avg_price": 24.16,
+      "stock_count": 20,
+      "return_pct": -3.78
+    },
+    {
+      "date": "2026-04-07",
+      "avg_price": 24.36,
+      "stock_count": 20,
+      "return_pct": -2.99
+    },
+    {
+      "date": "2026-04-08",
+      "avg_price": 25.74,
+      "stock_count": 20,
+      "return_pct": 2.51
+    },
+    {
+      "date": "2026-04-09",
+      "avg_price": 25.47,
+      "stock_count": 20,
+      "return_pct": 1.43
+    },
+    {
+      "date": "2026-04-10",
+      "avg_price": 25.77,
+      "stock_count": 20,
+      "return_pct": 2.63
+    },
+    {
+      "date": "2026-04-13",
+      "avg_price": 26.16,
+      "stock_count": 20,
+      "return_pct": 4.18
+    },
+    {
+      "date": "2026-04-14",
+      "avg_price": 26.45,
+      "stock_count": 20,
+      "return_pct": 5.34
+    },
+    {
+      "date": "2026-04-15",
+      "avg_price": 26.21,
+      "stock_count": 20,
+      "return_pct": 4.38
+    },
+    {
+      "date": "2026-04-16",
+      "avg_price": 26.62,
+      "stock_count": 20,
+      "return_pct": 6.01
+    },
+    {
+      "date": "2026-04-17",
+      "avg_price": 26.68,
+      "stock_count": 20,
+      "return_pct": 6.25
+    },
+    {
+      "date": "2026-04-20",
+      "avg_price": 27.16,
+      "stock_count": 20,
+      "return_pct": 8.16
+    },
+    {
+      "date": "2026-04-21",
+      "avg_price": 27.21,
+      "stock_count": 20,
+      "return_pct": 8.36
+    },
+    {
+      "date": "2026-04-22",
+      "avg_price": 27.56,
+      "stock_count": 20,
+      "return_pct": 9.76
+    },
+    {
+      "date": "2026-04-23",
+      "avg_price": 27.12,
+      "stock_count": 20,
+      "return_pct": 8.0
+    },
+    {
+      "date": "2026-04-24",
+      "avg_price": 27.5,
+      "stock_count": 20,
+      "return_pct": 9.52
+    },
+    {
+      "date": "2026-04-27",
+      "avg_price": 28.71,
+      "stock_count": 20,
+      "return_pct": 14.34
+    },
+    {
+      "date": "2026-04-28",
+      "avg_price": 28.39,
+      "stock_count": 20,
+      "return_pct": 13.06
+    },
+    {
+      "date": "2026-04-29",
+      "avg_price": 28.32,
+      "stock_count": 20,
+      "return_pct": 12.78
+    },
+    {
+      "date": "2026-04-30",
+      "avg_price": 29.15,
+      "stock_count": 20,
+      "return_pct": 16.09
+    },
+    {
+      "date": "2026-05-06",
+      "avg_price": 30.82,
+      "stock_count": 20,
+      "return_pct": 22.74
+    },
+    {
+      "date": "2026-05-07",
+      "avg_price": 31.65,
+      "stock_count": 20,
+      "return_pct": 26.05
+    },
+    {
+      "date": "2026-05-08",
+      "avg_price": 31.46,
+      "stock_count": 20,
+      "return_pct": 25.29
+    },
+    {
+      "date": "2026-05-11",
+      "avg_price": 33.9,
+      "stock_count": 20,
+      "return_pct": 35.01
+    },
+    {
+      "date": "2026-05-12",
+      "avg_price": 33.37,
+      "stock_count": 20,
+      "return_pct": 32.9
+    },
+    {
+      "date": "2026-05-13",
+      "avg_price": 34.52,
+      "stock_count": 20,
+      "return_pct": 37.48
+    },
+    {
+      "date": "2026-05-14",
+      "avg_price": 34.56,
+      "stock_count": 20,
+      "return_pct": 37.63
+    },
+    {
+      "date": "2026-05-15",
+      "avg_price": 33.64,
+      "stock_count": 20,
+      "return_pct": 33.97
+    },
+    {
+      "date": "2026-05-18",
+      "avg_price": 33.78,
+      "stock_count": 20,
+      "return_pct": 34.53
+    },
+    {
+      "date": "2026-05-19",
+      "avg_price": 33.94,
+      "stock_count": 20,
+      "return_pct": 35.17
+    },
+    {
+      "date": "2026-05-20",
+      "avg_price": 35.31,
+      "stock_count": 20,
+      "return_pct": 40.62
+    },
+    {
+      "date": "2026-05-21",
+      "avg_price": 34.47,
+      "stock_count": 20,
+      "return_pct": 37.28
+    },
+    {
+      "date": "2026-05-22",
+      "avg_price": 35.32,
+      "stock_count": 20,
+      "return_pct": 40.66
+    },
+    {
+      "date": "2026-05-25",
+      "avg_price": 37.43,
+      "stock_count": 20,
+      "return_pct": 49.06
+    },
+    {
+      "date": "2026-05-26",
+      "avg_price": 36.17,
+      "stock_count": 20,
+      "return_pct": 44.05
+    },
+    {
+      "date": "2026-05-27",
+      "avg_price": 35.69,
+      "stock_count": 20,
+      "return_pct": 42.13
+    },
+    {
+      "date": "2026-05-28",
+      "avg_price": 36.34,
+      "stock_count": 20,
+      "return_pct": 44.72
+    },
+    {
+      "date": "2026-05-29",
+      "avg_price": 34.7,
+      "stock_count": 20,
+      "return_pct": 38.19
+    },
+    {
+      "date": "2026-06-01",
+      "avg_price": 32.86,
+      "stock_count": 20,
+      "return_pct": 30.86
+    },
+    {
+      "date": "2026-06-02",
+      "avg_price": 32.93,
+      "stock_count": 20,
+      "return_pct": 31.14
+    }
+  ],
+  "momentum_final": 1578460.0,
+  "multifactor_final": 1185879.0
+}

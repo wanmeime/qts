@@ -1,0 +1,63 @@
+# 多因子选股策略 - 参数配置
+# 所有参数集中管理，方便调优
+
+# 数据源配置
+data_source:
+  cache_file: "/home/jiaod/qts/00-研究/数据源/缓存/A股全市场行情.csv"
+  encoding: "utf-8"
+
+# 输出配置
+output:
+  signal_dir: "/home/jiaod/qts/30-信号/"
+  file_prefix: "多因子选股"
+  top_n: 20  # 输出前N只股票
+
+# 排除规则
+exclusion:
+  exclude_st: true        # 排除ST股
+  exclude_delist: true    # 排除退市股
+  min_pe: 0               # PE下限（排除负值）
+  min_pb: 0               # PB下限（排除负值）
+
+# 因子权重配置
+factors:
+  pe:
+    name: "市盈率"
+    weight: 0.20
+    direction: "negative"   # 越低越好
+    column: "市盈率"
+
+  pb:
+    name: "市净率"
+    weight: 0.15
+    direction: "negative"   # 越低越好
+    column: "市净率"
+
+  turnover:
+    name: "换手率"
+    weight: 0.15
+    direction: "moderate"   # 适中最优
+    column: "换手率"
+    optimal_percentile: 50  # 最优分位数（50%位置）
+
+  market_cap:
+    name: "总市值"
+    weight: 0.20
+    direction: "positive"   # 越大越好
+    column: "总市值"
+
+  volume:
+    name: "成交额"
+    weight: 0.15
+    direction: "positive"   # 越大越好
+    column: "成交额"
+
+  change_pct:
+    name: "涨跌幅"
+    weight: 0.15
+    direction: "moderate"   # 接近0最优
+    column: "涨跌幅"
+    optimal_value: 0        # 最优值（涨跌幅为0%）
+
+# 权重校验（必须等于1.0）
+weight_sum_check: 1.0

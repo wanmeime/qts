@@ -1,0 +1,13 @@
+{
+  "enabledPlugins": {
+    "oh-my-feishu@oh-my-feishu-marketplace": true
+  },
+  "extraKnownMarketplaces": {
+    "oh-my-feishu-marketplace": {
+      "source": {
+        "source": "directory",
+        "path": "/home/jiaod/.npm-global/lib/node_modules/oh-my-feishu"
+      }
+    }
+  }
+}
