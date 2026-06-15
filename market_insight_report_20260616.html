@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全市场洞察报告</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; line-height: 1.9; color: #1a1a1a; background: #f0f2f5; padding: 12px; font-size: 14px; }
+        .container { max-width: 100%; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: #fff; padding: 20px 16px; text-align: center; }
+        .header h1 { font-size: 20px; margin-bottom: 6px; }
+        .header .date { font-size: 13px; opacity: 0.9; }
+        .content { padding: 16px; }
+        .section { margin-bottom: 20px; }
+        .section-title { font-size: 16px; color: #1e3c72; border-left: 4px solid #2a5298; padding-left: 10px; margin-bottom: 12px; font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px; }
+        th { background: #f8f9fa; padding: 8px 6px; text-align: left; border-bottom: 2px solid #dee2e6; font-weight: 600; }
+        td { padding: 8px 6px; border-bottom: 1px solid #e9ecef; }
+        .up { color: #dc3545; }
+        .down { color: #28a745; }
+        .analysis { color: #2c3e50; font-size: 14px; }
+        .analysis p { margin-bottom: 12px; text-align: justify; }
+        .analysis strong { color: #1a1a1a; }
+        .highlight { background: #fff3cd; padding: 2px 6px; border-radius: 4px; color: #856404; }
+        .bull-box { background: #ffebee; border-left: 4px solid #dc3545; padding: 12px 14px; border-radius: 0 8px 8px 0; margin-bottom: 10px; }
+        .bull-box h4 { color: #c62828; font-size: 14px; margin-bottom: 6px; }
+        .bear-box { background: #e8f5e9; border-left: 4px solid #28a745; padding: 12px 14px; border-radius: 0 8px 8px 0; margin-bottom: 10px; }
+        .bear-box h4 { color: #2e7d32; font-size: 14px; margin-bottom: 6px; }
+        .strategy-box { background: #fff8e1; border-left: 4px solid #ffc107; padding: 12px 14px; border-radius: 0 8px 8px 0; margin-bottom: 10px; }
+        .risk-item { background: #ffebee; border-left: 4px solid #e53935; padding: 10px 12px; margin-bottom: 8px; border-radius: 0 6px 6px 0; font-size: 13px; color: #b71c1c; }
+        .conclusion-box { background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); color: #fff; padding: 16px; border-radius: 8px; text-align: center; margin: 15px 0; }
+        .conclusion-box.bearish { background: linear-gradient(135deg, #dc3545 0%, #c62828 100%); }
+        .conclusion-box h3 { margin-bottom: 8px; }
+        .event-box { background: #f5f5f5; padding: 14px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #2196f3; }
+        .event-box h4 { color: #1565c0; margin-bottom: 8px; font-size: 14px; }
+        .signal-box { background: #f5f5f5; padding: 14px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #2196f3; }
+        .signal-box h4 { color: #1565c0; margin-bottom: 8px; font-size: 14px; }
+        .signal-box.up { border-left-color: #dc3545; }
+        .signal-box.up h4 { color: #c62828; }
+        .signal-box.down { border-left-color: #28a745; }
+        .signal-box.down h4 { color: #2e7d32; }
+        .signal-box.neutral { border-left-color: #ff9800; }
+        .signal-box.neutral h4 { color: #e65100; }
+        .footer { background: #f5f5f5; padding: 14px; text-align: center; color: #666; font-size: 11px; border-top: 1px solid #e0e0e0; }
+        ul { padding-left: 18px; margin: 6px 0; }
+        li { margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 全市场洞察报告</h1>
+            <div class="date">2026年6月16日 | TradingAgents 多Agent协同分析</div>
+        </div>
+        <div class="content">
+
+            <div class="section">
+                <h2 class="section-title">一、指数数据</h2>
+                <table>
+                    <tr><th>指数</th><th>收盘点数</th><th>涨跌幅</th></tr>
+                    <tr><td><strong>上证指数</strong></td><td>4096.472</td><td class="up">+1.61%</td></tr>
+<tr><td><strong>深证成指</strong></td><td>15531.109</td><td class="up">+3.79%</td></tr>
+<tr><td><strong>创业板指</strong></td><td>4033.535</td><td class="up">+5.3%</td></tr>
+<tr><td><strong>沪深300</strong></td><td>4891.713</td><td class="up">+2.39%</td></tr>
+<tr><td><strong>科创50</strong></td><td>1748.326</td><td class="up">+5.12%</td></tr>
+
+                </table>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">二、事件联动分析</h2>
+                
+        <div class="event-box">
+            <h4>📌 事件1：九大重点行业启动节能降碳改造攻坚三年行动</h4>
+            <p><strong>事件背景：</strong>为支撑实现碳达峰碳中和目标，国家发展改革委等五部门于近期启动了针对钢铁、电解铝、水泥、煤电等九大高耗能行业的节能降碳全面改造。</p>
+            <ul>
+                <li><strong>影响传导链：</strong>九大行业启动节能降碳攻坚 → 钢铁、水泥、煤电等传统高耗能企业面临强制性资本开支以升级设备/工艺 → 短期增加企业生产成本与资本开支压力，影响当期利润 → 市场对相关传统周期板块的盈利预期进行修正 → 相关板块（煤炭、钢铁、水泥、传统电力）估值短期承压。</li>
+                <li><strong>影响方向：</strong><span class="down">偏空</span></li>
+            </ul>
+        </div>
+        <div class="event-box">
+            <h4>📌 事件2：半导体存储芯片需求强劲及AI算力产业链动态持续活跃</h4>
+            <p><strong>事件背景：</strong>根据最新产业动态，三星、SK海力士、美光等全球存储芯片巨头订单饱满，AI算力需求持续推动HBM等高端芯片价格上涨。同时，国内AI芯片厂商订单增加，国家大基金三期持续投资。</p>
+            <ul>
+                <li><strong>影响传导链：</strong>全球AI算力需求激增 → 带动存储芯片（HBM/DDR5）及AI芯片需求爆发 → 国内半导体产业链（设计、制造、设备、材料）景气度持续上行 → 直接提振A股半导体、元件、AI算力相关板块的营收与利润预期 → 增强市场对A股科技成长主线的信心，吸引更多资金流入。</li>
+                <li><strong>影响方向：</strong><span class="up">偏多</span></li>
+            </ul>
+        </div>
+        <div class="event-box">
+            <h4>📌 事件3：国家“两重”建设持续发力，推动民生工程与基础设施投资</h4>
+            <p><strong>事件背景：</strong>今年以来，国家重大战略实施和重点领域安全能力建设（“两重”）投资加速，资金流向灌区改造、城市地下管网更新等民生及基础设施领域。</p>
+            <ul>
+                <li><strong>影响传导链：</strong>“两重”建设投资落地 → 水利管网、城市基建等工程订单增加 → 相关建材、工程、环保设备公司获得确定性收入来源 → 为部分传统板块（如建材、部分机械）提供基本面支撑，缓解其下行压力。</li>
+                <li><strong>影响方向：</strong><span class="up">中性偏多（对整体市场偏中性，对部分细分板块有结构性提振）</span></li>
+            </ul>
+        </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">三、核心分析</h2>
+                <div class="bull-box">
+                    <h4>🔴 多方观点</h4>
+                    <p></p>
+                </div>
+                <div class="bear-box">
+                    <h4>🟢 空方观点</h4>
+                    <p></p>
+                </div>
+                <div class="analysis">
+                    <p><strong>综合判断：</strong>**看多，但需保持警惕，行情性质为结构性牛市初期**
+
+我更倾向于多方观点，**但承认空方提示的风险是短期主要矛盾**。原因如下：
+*   **趋势信号已明确**：上证指数带量突破4050点平台并站上20日均线（4073点），创业板指均线多头排列，这是资金做出的方向性选择，技术意义重大。
+*   **主线逻辑清晰且强化**：资金并非无序炒作，而是聚焦于具备全球产业趋势支撑的AI（半导体、CPO）和国产化（元件）赛道。这种集中度虽带来波动，但也表明主线得到了市场最强共识的确认，其强度远超传统板块。
+*   **情绪处于健康扩散期**：145家涨停、134家首板显示赚钱效应广泛，有利于吸引场外资金逐步入场，而非单纯的情绪顶峰。**前提是主线板块需能承受住短期获利了结压力**。
+
+**空方提示的风险不可忽视，将成为行情发展的试金石**：上方60日均线（约4049点）及前期套牢盘压力真实存在，且板块极端分化削弱了指数上涨的稳定性。若科技主线遭遇猛烈调整且无其他板块接力，则回调风险将剧增。</p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">四、板块建议</h2>
+                <div class="analysis">
+                    <p><strong>🔴 建议关注：</strong>**半导体、CPO（共封装光学）、高端元件**。
+    *   **理由**：这是本轮资金共识的核心，符合全球科技浪潮与国产替代逻辑，具备中期产业支撑。即便短期波动，但中期向上趋势最为明确。</p>
+                    <p><strong>🟢 坚决回避：</strong>**煤炭、银行、地产等传统周期/金融板块**。
+    *   **理由**：在当前市场结构中处于被抽血状态，缺乏主动做多资金。在指数挑战关键阻力位时，若它们不能从“负贡献”转为“企稳”，将极大制约大盘上行高度。</p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">五、操作策略</h2>
+                <div class="strategy-box">
+                    <p><strong>仓位建议：**稳健**。建议投资者维持适中仓位（如6-7成），避免满仓追高，为可能的回调整固留有余地。</strong></p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">六、风险提示</h2>
+                <div class="risk-item"><strong>1. 技术回调风险：</strong>指数面临60日均线及前高强阻力，若量能无法持续放大，可能导致突破失败并回踩20日均线。</div>
+<div class="risk-item"><strong>2. 板块轮动风险：</strong>科技主线短期涨幅巨大，存在技术性获利了结需求。若轮动至其他板块失败，则可能引发市场普跌。</div>
+<div class="risk-item"><strong>3. 情绪退潮风险：</strong>若涨停数量锐减、赚钱效应无法维持，则反弹可能夭折。</div>
+<div class="risk-item"><strong>4. 正向循环：</strong>科技主线持续上涨 → 赚钱效应吸引更多场外资金入场 → 资金在主线内部扩散或寻找补涨分支 → 行情纵深发展。
+    2.  **负向反馈**：科技主线短期涨幅过大引发获利了结 → 资金尝试流向其他板块但失败 → 市场风险偏好下降 → 整体资金流出市场。
+    因此，资金面的健康度取决于**增量资金是否持续入场**以及**科技主线能否维持活跃**。</div>
+
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">七、验证信号</h2>
+                <div class="signal-box up">
+                    <h4>📈 上涨趋势确认</h4>
+                    <ul><li><strong>4100点**（上证指数具体点位）并连续**2-3日**站稳。
+*   成交量配合：上证成交额持续放大至 **1.1万亿元** 以上。
+*   **一句话总结：</strong>指数放量站上4100点且不回落，同时科技主线能抗住调整继续走强 = 可以做多并加仓。</li></ul>
+                    <p><strong>一句话总结：</strong></p>
+                </div>
+                <div class="signal-box down">
+                    <h4>📉 下跌趋势确认</h4>
+                    <ul><li><strong>4070点**（20日均线附近）且**2日**内无法收回。
+*   成交量配合：下跌日上证成交额放量（如大于1万亿元），反弹日缩量。
+*   **一句话总结：</strong>指数放量跌破4070点且无力收复，同时科技主线出现龙头股跌停或板块普跌 = 必须离场或大幅降仓。</li></ul>
+                    <p><strong>一句话总结：</strong></p>
+                </div>
+                <div class="signal-box neutral">
+                    <h4>↔️ 横盘震荡确认</h4>
+                    <ul><li><strong>4050点-4100点** 区间内反复波动。
+*   上方压力 **4100点** 无法突破，下方支撑 **4050点**（原平台上沿及60日均线）不破。
+*   成交量配合：上证成交额萎缩至 **8500亿元** 以下。
+*   **一句话总结：</strong>指数在4050-4100点窄幅震荡，成交量萎缩 = 观望不动，等待方向选择。</li></ul>
+                    <p><strong>一句话总结：</strong></p>
+                </div>
+            </div>
+
+        </div>
+        <div class="footer">
+            <div>数据来源：同花顺、新浪财经 | 分析系统：TradingAgents 多Agent协作</div>
+        </div>
+    </div>
+</body>
+</html>
