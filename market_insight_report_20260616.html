@@ -32,8 +32,13 @@
         .conclusion-box { background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); color: #fff; padding: 16px; border-radius: 8px; text-align: center; margin: 15px 0; }
         .conclusion-box.bearish { background: linear-gradient(135deg, #dc3545 0%, #c62828 100%); }
         .conclusion-box h3 { margin-bottom: 8px; }
-        .event-box { background: #f5f5f5; padding: 14px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #2196f3; }
-        .event-box h4 { color: #1565c0; margin-bottom: 8px; font-size: 14px; }
+        .gauge-container { background: #f5f5f5; padding: 14px; border-radius: 8px; margin: 10px 0; }
+        .gauge { height: 24px; border-radius: 12px; background: #e0e0e0; position: relative; overflow: hidden; margin: 8px 0; }
+        .gauge-fill { height: 100%; border-radius: 12px; }
+        .gauge-fill.bullish { background: linear-gradient(90deg, #ff6b6b, #dc3545); }
+        .gauge-fill.bearish { background: linear-gradient(90deg, #66bb6a, #28a745); }
+        .gauge-fill.neutral { background: linear-gradient(90deg, #ffa726, #ff9800); }
+        .gauge-label { display: flex; justify-content: space-between; font-size: 12px; color: #666; }
         .signal-box { background: #f5f5f5; padding: 14px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #2196f3; }
         .signal-box h4 { color: #1565c0; margin-bottom: 8px; font-size: 14px; }
         .signal-box.up { border-left-color: #dc3545; }
@@ -42,6 +47,8 @@
         .signal-box.down h4 { color: #2e7d32; }
         .signal-box.neutral { border-left-color: #ff9800; }
         .signal-box.neutral h4 { color: #e65100; }
+        .event-box { background: #f5f5f5; padding: 14px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #2196f3; }
+        .event-box h4 { color: #1565c0; margin-bottom: 8px; font-size: 14px; }
         .footer { background: #f5f5f5; padding: 14px; text-align: center; color: #666; font-size: 11px; border-top: 1px solid #e0e0e0; }
         ul { padding-left: 18px; margin: 6px 0; }
         li { margin-bottom: 4px; }
@@ -95,6 +102,41 @@
                 <li><strong>影响方向：</strong><span class="up">中性偏多（对整体市场偏中性，对部分细分板块有结构性提振）</span></li>
             </ul>
         </div>
+                
+    <div class="gauge-container">
+        <h4>🌡️ 情绪温度</h4>
+        <p style="font-size: 13px; color: #666;">根据市场综合判断，出现145家涨停、134家首板，显示上涨家数占优且赚钱效应广泛，未呈现“赚指数不赚钱”现象。
+    *   **成交量特征**：市场综合判断提及“放量上涨”和“沪市成交能否持续维持在万亿以上”，表明近期有放量行为，但能否持续是关键观察点。目前处于量能活跃状态。
+    *   **涨停/跌停**：涨停家数达两位数（145家），且有较多首板，连板生态良好，无大面积跌停，显示做多情绪高涨。
+    *   **投机指标**：游资活跃度高，集中攻击科技成长主线，市场赚钱效应处于健康扩散期。</p>
+        <div class="gauge">
+            <div class="gauge-fill bullish" style="width: 80%;"></div>
+        </div>
+        <div class="gauge-label">
+            <span>偏冷</span>
+            <span style="color: #dc3545; font-weight: 600;">偏热 80%</span>
+            <span>偏热</span>
+        </div>
+    </div>
+                
+    <div class="gauge-container">
+        <h4>💰 资金流向</h4>
+        <p style="font-size: 13px; color: #666;">结构性偏流入。主力资金显著集中流入**半导体、AI、元件等科技成长板块**，而从传统周期、金融板块大幅流出。</p>
+        <div class="gauge">
+            <div class="gauge-fill bullish" style="width: 70%;"></div>
+        </div>
+        <div class="gauge-label">
+            <span>流出</span>
+            <span style="color: #dc3545; font-weight: 600;">偏流入 70%</span>
+            <span>流入</span>
+        </div>
+    </div>
+                
+    <div class="conclusion-box ">
+        <h3>📊 综合评判</h3>
+        <p style="font-size: 18px; font-weight: 600;">市场偏多，短期趋势向上</p>
+        <p style="font-size: 13px; opacity: 0.9; margin-top: 8px;">产业景气度与市场最强共识形成共振，驱动资金聚焦主线并推升市场情绪，技术面已做出方向性选择。</p>
+    </div>
             </div>
 
             <div class="section">
@@ -151,25 +193,18 @@
                 <h2 class="section-title">七、验证信号</h2>
                 <div class="signal-box up">
                     <h4>📈 上涨趋势确认</h4>
-                    <ul><li><strong>4100点**（上证指数具体点位）并连续**2-3日**站稳。
-*   成交量配合：上证成交额持续放大至 **1.1万亿元** 以上。
-*   **一句话总结：</strong>指数放量站上4100点且不回落，同时科技主线能抗住调整继续走强 = 可以做多并加仓。</li></ul>
-                    <p><strong>一句话总结：</strong></p>
+                    <ul></ul>
+                    <p><strong>一句话总结：</strong>指数放量站上4100点且不回落，同时科技主线能抗住调整继续走强 = 可以做多并加仓。</p>
                 </div>
                 <div class="signal-box down">
                     <h4>📉 下跌趋势确认</h4>
-                    <ul><li><strong>4070点**（20日均线附近）且**2日**内无法收回。
-*   成交量配合：下跌日上证成交额放量（如大于1万亿元），反弹日缩量。
-*   **一句话总结：</strong>指数放量跌破4070点且无力收复，同时科技主线出现龙头股跌停或板块普跌 = 必须离场或大幅降仓。</li></ul>
-                    <p><strong>一句话总结：</strong></p>
+                    <ul></ul>
+                    <p><strong>一句话总结：</strong>指数放量跌破4070点且无力收复，同时科技主线出现龙头股跌停或板块普跌 = 必须离场或大幅降仓。</p>
                 </div>
                 <div class="signal-box neutral">
                     <h4>↔️ 横盘震荡确认</h4>
-                    <ul><li><strong>4050点-4100点** 区间内反复波动。
-*   上方压力 **4100点** 无法突破，下方支撑 **4050点**（原平台上沿及60日均线）不破。
-*   成交量配合：上证成交额萎缩至 **8500亿元** 以下。
-*   **一句话总结：</strong>指数在4050-4100点窄幅震荡，成交量萎缩 = 观望不动，等待方向选择。</li></ul>
-                    <p><strong>一句话总结：</strong></p>
+                    <ul></ul>
+                    <p><strong>一句话总结：</strong>指数在4050-4100点窄幅震荡，成交量萎缩 = 观望不动，等待方向选择。</p>
                 </div>
             </div>
 
