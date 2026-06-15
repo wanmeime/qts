@@ -208,22 +208,25 @@ def main():
     log("使用长链接，无需公网URL")
     log("=" * 50)
     
-    # 启动事件消费
+    # 启动事件消费（保持 stdin 打开）
     cmd = [
         LARK_CLI, "event", "consume",
         "im.message.receive_v1",
-        "--as", "bot"
+        "--as", "bot",
+        "--timeout", "0"  # 无超时
     ]
     
     try:
-        # 启动子进程
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            cwd=WORK_DIR
-        )
+        # 使用 /dev/null 作为 stdin 保持打开
+        with open(os.devnull, 'r') as devnull:
+            process = subprocess.Popen(
+                cmd,
+                stdin=devnull,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                cwd=WORK_DIR
+            )
         
         log("事件消费已启动，等待消息...")
         
