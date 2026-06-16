@@ -484,7 +484,7 @@ def find_buy_sell_signals(
                     for b in zs_bis:
                         if b.direction == 1 and b.end.index < bi.start.index:
                             if prev_top is None or b.end.price > prev_top.price:
-                                prev_top = b
+                                prev_top = b.end
 
                     if prev_top and top_fractal.price < prev_top.price:
                         # MACD顶背驰检查
@@ -496,7 +496,7 @@ def find_buy_sell_signals(
                                 bi_end_idx - divergence_window,
                                 bi_end_idx
                             )
-                            prev_end = prev_top.end.index
+                            prev_end = prev_top.index
                             if prev_end >= divergence_window and prev_end < len(macd_hist):
                                 prev_area = macd_area(
                                     pd.Series(macd_hist),
