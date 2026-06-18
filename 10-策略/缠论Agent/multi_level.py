@@ -104,10 +104,7 @@ class MultiLevelAnalysis:
         - LevelAnalysis 分析结果
         """
         chanlun = ChanlunCore()
-        chanlun.analyze(df)
-
-        # 获取当前状态
-        state = chanlun.get_current_state()
+        state = chanlun.analyze(df)
 
         # 分离买卖点
         buy_points = [p for p in chanlun.buy_sell_points
@@ -115,22 +112,35 @@ class MultiLevelAnalysis:
         sell_points = [p for p in chanlun.buy_sell_points
                        if p.type in (BuySellType.SELL1, BuySellType.SELL2, BuySellType.SELL3)]
 
-        # 中继分型次数
-        cont_count = 0
-        if chanlun.continuation_fractals:
-            cont_count = chanlun.continuation_fractals.count
+        # 获取中枢信息
+        zhong_shu_high = None
+        zhong_shu_low = None
+        if chanlun.zhong_shus:
+            last_zs = chanlun.zhong_shus[-1]
+            zhong_shu_high = last_zs.high
+            zhong_shu_low = last_zs.low
+
+        # 获取最近买卖点
+        latest_buy_point = None
+        latest_sell_point = None
+        for bp in reversed(buy_points):
+            latest_buy_point = bp
+            break
+        for sp in reversed(sell_points):
+            latest_sell_point = sp
+            break
 
         return LevelAnalysis(
             level=level,
-            current_bi_direction=state['current_bi_direction'],
-            in_zhong_shu=state['in_zhong_shu'],
-            zhong_shu_high=state['zhong_shu_info']['high'] if state['zhong_shu_info'] else None,
-            zhong_shu_low=state['zhong_shu_info']['low'] if state['zhong_shu_info'] else None,
-            continuation_count=cont_count,
+            current_bi_direction=state.get('current_bi_direction'),
+            in_zhong_shu=state.get('in_zhongshu', False),
+            zhong_shu_high=zhong_shu_high,
+            zhong_shu_low=zhong_shu_low,
+            continuation_count=0,
             buy_points=buy_points,
             sell_points=sell_points,
-            latest_buy_point=state['latest_buy_point'],
-            latest_sell_point=state['latest_sell_point'],
+            latest_buy_point=latest_buy_point,
+            latest_sell_point=latest_sell_point,
             total_bis=len(chanlun.bis),
             total_fractals=len(chanlun.fractals),
             total_zhong_shus=len(chanlun.zhong_shus),
@@ -316,11 +326,11 @@ class MultiLevelAnalysis:
         if daily.buy_points:
             lines.append(f"  买点({len(daily.buy_points)}个):")
             for bp in daily.buy_points:
-                lines.append(f"    {bp.type.value}: {bp.price:.2f} (强度={bp.strength:.2f})")
+                lines.append(f"    {bp.type.value}: {bp.price:.2f}")
         if daily.sell_points:
             lines.append(f"  卖点({len(daily.sell_points)}个):")
             for sp in daily.sell_points:
-                lines.append(f"    {sp.type.value}: {sp.price:.2f} (强度={sp.strength:.2f})")
+                lines.append(f"    {sp.type.value}: {sp.price:.2f}")
 
         # 15分钟
         if min15:
@@ -336,11 +346,11 @@ class MultiLevelAnalysis:
             if min15.buy_points:
                 lines.append(f"  买点({len(min15.buy_points)}个):")
                 for bp in min15.buy_points:
-                    lines.append(f"    {bp.type.value}: {bp.price:.2f} (强度={bp.strength:.2f})")
+                    lines.append(f"    {bp.type.value}: {bp.price:.2f}")
             if min15.sell_points:
                 lines.append(f"  卖点({len(min15.sell_points)}个):")
                 for sp in min15.sell_points:
-                    lines.append(f"    {sp.type.value}: {sp.price:.2f} (强度={sp.strength:.2f})")
+                    lines.append(f"    {sp.type.value}: {sp.price:.2f}")
         else:
             lines.append("")
             lines.append("【15分钟级别】无数据")

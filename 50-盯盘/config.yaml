@@ -1,0 +1,97 @@
+# 盯盘系统配置
+# ============
+
+# 监控时间
+schedule:
+  # 交易时段 (北京时间)
+  trading_start: "09:15"
+  trading_end: "15:05"
+  # 扫描间隔 (秒)
+  interval_seconds: 60
+  # 非交易时段是否运行
+  run_outside_hours: false
+
+# 数据源
+data_source:
+  # 优先级: eastmoney > sina > tencent
+  primary: "eastmoney"
+  # 备用源
+  fallback: "sina"
+  # 请求超时 (秒)
+  timeout: 10
+  # 批量请求大小
+  batch_size: 50
+
+# 监控标的
+watchlist:
+  # 自选股文件路径
+  file: "/home/jiaod/qts/00-研究/自选股/watchlist.json"
+  # 额外监控标的 (代码: 名称)
+  extra_stocks:
+    # "600519": "贵州茅台"
+    # "000858": "五粮液"
+  # 监控大盘指数
+  indices:
+    "000001": "上证指数"
+    "399001": "深证成指"
+    "000300": "沪深300"
+    "399006": "创业板指"
+
+# 报警规则
+alerts:
+  # 价格突破
+  price_breakout:
+    enabled: true
+    # 突破前高/跌破前低的百分比阈值
+    threshold_pct: 0.5
+    # 回看天数
+    lookback_days: 20
+
+  # 涨跌幅阈值
+  change_threshold:
+    enabled: true
+    # 涨停提醒
+    limit_up: true
+    # 跌幅超过此值提醒 (负数)
+    big_drop_pct: -3.0
+    # 涨幅超过此值提醒
+    big_rise_pct: 5.0
+
+  # 成交量异动
+  volume_surge:
+    enabled: true
+    # 量比阈值
+    ratio_threshold: 3.0
+
+  # 技术指标
+  technical:
+    enabled: true
+    # RSI 超买超卖
+    rsi_overbought: 80
+    rsi_oversold: 20
+
+  # 大盘异动
+  market_crash:
+    enabled: true
+    # 大盘跌幅超过此值提醒
+    crash_pct: -2.0
+    # 大盘涨幅超过此值提醒
+    surge_pct: 2.0
+
+# 通知配置
+notification:
+  # 飞书推送
+  feishu:
+    enabled: true
+    chat_id: "oc_d2e8df3c676afa2c352d8ece0a9b6141"
+  # 消息去重时间窗口 (秒)
+  dedup_window_seconds: 300
+  # 单次最多推送股票数
+  max_stocks_per_alert: 10
+
+# 状态存储
+storage:
+  # SQLite 数据库路径
+  db_path: "/home/jiaod/qts/50-盯盘/watchdog.db"
+  # 保留天数
+  retention_days: 30

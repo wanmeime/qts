@@ -35,3 +35,6 @@ cache/
 # Large data files
 00-研究/数据源/缓存/kline_6m/
 00-研究/缠论知识库/.sync_state.json
+\n# Reasonix internal\n.reasonix/
+50-盯盘/watchdog.db
+50-盯盘/*.log
