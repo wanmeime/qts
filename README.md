@@ -293,6 +293,75 @@ docker commit tradingagents-scanner tradingagents-final:latest
 | market-report | 生成带图表的 HTML 报告 | `skills/market-report/SKILL.md` |
 | feishu-send | 发送文件/消息到飞书群 | `skills/feishu-send/SKILL.md` |
 
+### 天天基金 ttskill CLI
+
+天天基金 Skills 2.0 的 CLI 登录型 Skill，用于查询基金账户持仓、收益、交易记录等。
+
+#### 安装位置
+
+| 组件 | 路径 |
+|------|------|
+| ttskill CLI | `C:\Users\jiaod\AppData\Local\TTFund\ttskill-base\ttskill-base-win32-x64-0.1.1\` |
+| 业务 Skill 包（26个） | `C:\Users\jiaod\AppData\Local\TTFund\ttfund-skills\skills\` |
+| Codex Skill 文件 | `D:\jiaod\.codex\skills\ttskill\SKILL.md` |
+| Codex Runtime Skill | `D:\jiaod\.codex\skills\00-ttskill-runtime\SKILL.md` |
+| 登录凭证 | `C:\Users\jiaod\AppData\Local\TTFund\ttfund-skills\auth\secure\token.dpapi` |
+
+#### 命令
+
+```bash
+# 调用方式（需从用户目录执行，避免 UNC 路径问题）
+Set-Location "C:\Users\jiaod"
+ttskill invoke <SKILL_ID> --action <action> --body '<json>'
+
+# 常用查询
+ttskill invoke ACCOUNT_HOLDING --action holding_total --body '{}'      # 账户总资产
+ttskill invoke ACCOUNT_HOLDING --action holding_list --body '{}'       # 持仓明细
+ttskill invoke ACCOUNT_PROFIT --action total_profit --body '{}'        # 总收益
+
+# 状态与登录
+ttskill status                                                         # 查看状态
+ttskill login                                                          # 扫码登录
+```
+
+#### 可用业务 Skill 包
+
+| 类别 | Skill ID | 功能 |
+|------|----------|------|
+| 账户 | ACCOUNT_HOLDING | 持仓总资产、基金/活期宝/养老/黄金持仓 |
+| 账户 | ACCOUNT_PROFIT | 总收益、单基金收益、收益贡献、区间收益 |
+| 交易 | TRADE_QUERY | 交易列表、交易详情、银行卡、到账日历 |
+| 交易 | CONDITION_ORDER | 条件单列表、执行记录 |
+| 交易 | RATION_PLAN | 定投计划列表、定投结果 |
+| 交易 | SUBACCOUNT | 组合查询、持仓、收益、走势对比 |
+| 交易 | TTFUND_SIM_TRADE | 模拟组合管理与交易 |
+| 基金 | TTFUND_SEARCH | 基金/指数/经理/投顾搜索 |
+| 基金 | TTFUND_BASE_INFOS | 基金详情（净值、风险、收益、回撤、规则） |
+| 基金 | TTFUND_NAV_INFO | 历史净值走势 |
+| 基金 | TTFUND_HOLDING_INFO | 十大持仓、资产/行业配置、AI摘要 |
+| 基金 | TTFUND_MANAGER_INFO | 基金经理画像、在管基金、业绩 |
+| 基金 | TTFUND_THEME_INFO | 主题行情、估值、资金流向、成分股 |
+| 基金 | TTFUND_CONDITION_SELECT | 多维度条件筛选基金 |
+| 行情 | TTFUND_INDEX_INFO | 指数实时行情、估值、成分 |
+| 行情 | TTFUND_STOCK_PRICE_QUERY | 股价查询（最新价、涨跌幅、量额） |
+| 行情 | TTFUND_BOND_MARKET | 债市晴雨表 |
+| 行情 | TTFUND_GOLD_INFO | 黄金现货/期货行情、央行储备 |
+| 行情 | TTFUND_MACRO_DATA | 中美宏观数据（CPI/PMI/GDP等） |
+| 分析 | TTFUND_PORTFOLIO_ANALYSIS | IRR、牛熊表现、资产配置、CAPM |
+| 分析 | TTFUND_GROUP_BACKTEST | 组合历史回测 |
+| 分析 | TTFUND_RESEARCH_SEARCH | 新闻研报搜索 |
+| 分析 | TTFUND_RESEARCH_VIEW | 机构研究观点 |
+| 自选 | TTFUND_FAVOR_ZX | 自选基金/投顾管理（增删查） |
+| 自选 | TTFUND_STRATEGY_INFO | 投顾策略详情、业绩、持仓 |
+| 自选 | TTFUND_HUOQIBAO_LIST | 活期宝基金池、7日年化排行 |
+
+#### 注意事项
+
+- 仅限本机 Windows 使用，其他机器无法调用
+- 登录凭证绑定用户账号，token 有效期 30 天
+- 调用前需 `Set-Location "C:\Users\jiaod"` 避免 UNC 路径报错
+- body 参数需传合法 JSON 文件或字符串
+
 #### 使用示例
 
 ```python
@@ -340,4 +409,4 @@ python _build/report_template.py input.md output.html 2026年6月16日
 
 ---
 
-*基于SMCC五层架构经验设计 · 2026-06-01 · 更新于 2026-06-15*
+*基于SMCC五层架构经验设计 · 2026-06-01 · 更新于 2026-06-16*

@@ -49,6 +49,7 @@ try:
     sys.path.insert(0, str(Path(__file__).parent.parent / "10-策略" / "缠论Agent"))
     from multi_level import MultiLevelAnalysis, Level
     from knowledge_base import ChanlunKnowledgeBase
+    from chanlun_core import FractalType
     HAS_MULTI_LEVEL = True
 except ImportError:
     HAS_MULTI_LEVEL = False
@@ -162,58 +163,130 @@ def load_watchlist_codes() -> List[str]:
 
 def fetch_kline(code: str, days: int = 120, scale: int = 240) -> pd.DataFrame:
     """
-    获取K线数据（优先缓存，其次新浪）
+    获取K线数据（优先同花顺本地数据 → 缓存 → 新浪）
     
     Args:
         code: 股票代码
         days: 获取天数
         scale: K线周期（分钟），240=日线，15=15分钟
     """
-    # 15分钟K线不使用缓存（实时性要求高）
+    # 仅日线支持本地数据源
     if scale == 240:
-        csv_path = KLINE_CACHE_DIR / f"{code}.csv"
-        if csv_path.exists():
-            try:
-                df = pd.read_csv(csv_path)
-                if "day" in df.columns and "date" not in df.columns:
-                    df = df.rename(columns={"day": "date"})
-                if len(df) >= 30:
-                    return df.tail(days).reset_index(drop=True)
-            except Exception:
-                pass
+        # 1. 优先同花顺本地数据
+        ths_df = None
+        try:
+            from qmt_bridge.hexin_reader import get_hexin_kline, has_hexin_data
+            if has_hexin_data(code):
+                ths_df = get_hexin_kline(code, days=days + 60)
+        except Exception:
+            pass
 
-    # 新浪接口
+        # 2. 缓存（仅当无同花顺数据时）
+        csv_df = None
+        if ths_df is None or len(ths_df) < 30:
+            csv_path = KLINE_CACHE_DIR / f"{code}.csv"
+            if csv_path.exists():
+                try:
+                    csv_df = pd.read_csv(csv_path)
+                    if "day" in csv_df.columns and "date" not in csv_df.columns:
+                        csv_df = csv_df.rename(columns={"day": "date"})
+                    if len(csv_df) >= 30:
+                        csv_df = csv_df.set_index("date")
+                        csv_df.index = pd.to_datetime(csv_df.index)
+                except Exception:
+                    pass
+
+        # 3. 新浪接口（获取完整数据，用于填补空缺）
+        sina_df = None
+        try:
+            if code.startswith("6") or code.startswith("9"):
+                symbol = f"sh{code}"
+            else:
+                symbol = f"sz{code}"
+            url = f"https://quotes.sina.cn/cn/api/jsonp.php/=/CN_MarketDataService.getKLineData?symbol={symbol}&scale={scale}&ma=no&datalen={days + 60}"
+            resp = req_lib.get(url, timeout=10)
+            text = resp.text
+            start = text.index("[")
+            end = text.rindex("]") + 1
+            data = json.loads(text[start:end])
+            if data:
+                sina_df = pd.DataFrame(data)
+                sina_df = sina_df.rename(columns={"day": "date"})
+                for col in ["open", "close", "high", "low", "volume"]:
+                    if col in sina_df.columns:
+                        sina_df[col] = pd.to_numeric(sina_df[col], errors="coerce")
+                sina_df["date"] = pd.to_datetime(sina_df["date"])
+                sina_df = sina_df.set_index("date")
+        except Exception:
+            pass
+
+        # 设置日期索引（确保后续缠论分析能用正确日期）
+        def _set_date_index(df):
+            if "date" in df.columns:
+                df = df.set_index(pd.to_datetime(df["date"]))
+            return df
+
+        # 4. 合并数据：优先同花顺，空缺用新浪补（用同花顺价格计算修正系数）
+        if ths_df is not None and len(ths_df) >= 30 and sina_df is not None and len(sina_df) >= 30:
+            # 计算复权系数（用同时有数据的日期）
+            common_dates = ths_df.index.intersection(sina_df.index)
+            if len(common_dates) > 5:
+                ratios = (ths_df.loc[common_dates, "close"] / sina_df.loc[common_dates, "close"]).values
+                ratio = sum(ratios) / len(ratios)
+            else:
+                ratio = 1.0
+            
+            # 用同花顺数据，缺失日期用新浪×系数填补
+            all_dates = sina_df.index.union(ths_df.index).sort_values()
+            merged = pd.DataFrame(index=all_dates)
+            # 同花顺列
+            for col in ["open", "high", "low", "close", "volume"]:
+                if col in ths_df.columns:
+                    merged[f"ths_{col}"] = ths_df[col]
+                    merged[f"sina_{col}"] = sina_df[col] * ratio
+            
+            # 填值：优先同花顺，没有的用新浪修正值
+            for col in ["open", "high", "low", "close"]:
+                merged[col] = merged[f"ths_{col}"].fillna(merged[f"sina_{col}"])
+            merged["volume"] = merged["ths_volume"].fillna(merged["sina_volume"]).fillna(0).astype(int)
+            
+            merged = merged.drop(columns=[c for c in merged.columns if c.startswith("ths_") or c.startswith("sina_")])
+            merged = merged.dropna(subset=["close"])
+            
+            if len(merged) >= 30:
+                return merged.tail(days).reset_index(drop=False).rename(columns={"index": "date"})
+        
+        # 5. 仅同花顺（无新浪）
+        if ths_df is not None and len(ths_df) >= 30:
+            return ths_df.reset_index().tail(days).reset_index(drop=True)
+        
+        # 6. 仅缓存
+        if csv_df is not None and len(csv_df) >= 30:
+            return csv_df.tail(days).reset_index(drop=True)
+
+    # 7. 仅有新浪（或非日线）
     try:
+        if sina_df is not None and len(sina_df) >= 30:
+            return sina_df.tail(days).reset_index(drop=False).rename(columns={"index": "date"})
+        
+        # 重新从新浪拉
         if code.startswith("6") or code.startswith("9"):
             symbol = f"sh{code}"
         else:
             symbol = f"sz{code}"
-
         url = f"https://quotes.sina.cn/cn/api/jsonp.php/=/CN_MarketDataService.getKLineData?symbol={symbol}&scale={scale}&ma=no&datalen={days + 30}"
         resp = req_lib.get(url, timeout=10)
         text = resp.text
-
-        # 解析 JSONP
         start = text.index("[")
         end = text.rindex("]") + 1
         data = json.loads(text[start:end])
-
         if not data:
             return pd.DataFrame()
-
         df = pd.DataFrame(data)
-        df = df.rename(columns={
-            "day": "date",
-            "open": "open",
-            "close": "close",
-            "high": "high",
-            "low": "low",
-            "volume": "volume",
-        })
+        df = df.rename(columns={"day": "date"})
         for col in ["open", "close", "high", "low", "volume"]:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
-
         return df.tail(days).reset_index(drop=True)
     except Exception as e:
         logger.debug(f"获取 {code} K线(scale={scale})失败: {e}")
@@ -255,63 +328,112 @@ def analyze_stock(code: str, kline_df: pd.DataFrame, config: dict) -> Dict:
         try:
             # 获取15分钟K线数据
             min15_df = fetch_kline(code, days=60, scale=15)
+            if not min15_df.empty and "date" in min15_df.columns:
+                min15_df = min15_df.set_index(pd.to_datetime(min15_df["date"]))
+            
+            # 确保日线数据有日期索引
+            daily_df = kline_df.copy()
+            if "date" in daily_df.columns:
+                daily_df = daily_df.set_index(pd.to_datetime(daily_df["date"]))
             
             # 多级别分析
             analyzer = MultiLevelAnalysis()
-            multi_result = analyzer.analyze_multi_level(code, kline_df, min15_df)
+            multi_result = analyzer.analyze_multi_level(code, daily_df, min15_df)
             
-            # 转换为统一的信号格式
+            # 信号类型中文名映射
+            _type_cn = {
+                "buy1": "一买", "buy2": "二买", "buy3": "三买",
+                "sell1": "一卖", "sell2": "二卖", "sell3": "三卖",
+            }
+            _level_cn = {"daily": "日线", "15min": "15分钟"}
             signals = []
-            for bp in (multi_result.daily.buy_points if multi_result.daily else []):
-                signals.append(Signal(
-                    type=bp.type.value.lower(),
-                    date=bp.timestamp,
-                    price=bp.price,
-                    score=80,
-                    description=f"日线{bp.type.value}",
-                    macd_confirm=True,
-                    volume_confirm=False,
-                ))
-            for sp in (multi_result.daily.sell_points if multi_result.daily else []):
-                signals.append(Signal(
-                    type=sp.type.value.lower(),
-                    date=sp.timestamp,
-                    price=sp.price,
-                    score=80,
-                    description=f"日线{sp.type.value}",
-                    macd_confirm=True,
-                    volume_confirm=False,
-                ))
-            if multi_result.min15:
-                for bp in multi_result.min15.buy_points:
-                    signals.append(Signal(
-                        type=bp.type.value.lower(),
-                        date=bp.timestamp,
-                        price=bp.price,
-                        score=75,
-                        description=f"15分钟{bp.type.value}",
-                        macd_confirm=True,
-                        volume_confirm=False,
-                    ))
-                for sp in multi_result.min15.sell_points:
-                    signals.append(Signal(
-                        type=sp.type.value.lower(),
-                        date=sp.timestamp,
-                        price=sp.price,
-                        score=75,
-                        description=f"15分钟{sp.type.value}",
-                        macd_confirm=True,
-                        volume_confirm=False,
-                    ))
 
+            # ---- 日线买/卖点 + 底分型确认突破 = 入场/离场信号 ----
+            # 日线有买点 → 检查日线底分型是否被突破
+            # 直接检查日线底分型确认突破
+            dly_core = None
+            if multi_result and multi_result.daily:
+                dly_core = multi_result.daily.chanlun_core
+            if dly_core and dly_core.fractals:
+                for f in reversed(dly_core.fractals):
+                    if f.type == FractalType.BOTTOM:
+                        entry = f.third_high
+                        cp = result.get('current_price', 0)
+                        if cp > entry:
+                            # 小转大（默认）
+                            desc = '日线小转大'
+                            sig_type = 'inflection'
+                            sig_date = ''
+                            sig_price = entry
+                            sig_score = 85
+                            
+                            # 检查是否有同期的标准买点
+                            if multi_result and multi_result.daily and multi_result.daily.latest_buy_point:
+                                bp = multi_result.daily.latest_buy_point
+                                try:
+                                    from datetime import datetime
+                                    bpd = datetime.strptime(str(bp.timestamp)[:10], '%Y-%m-%d')
+                                    bfd = datetime.strptime(str(f.timestamp)[:10], '%Y-%m-%d')
+                                    if abs((bfd - bpd).days) <= 10:
+                                        lvl = getattr(bp, "level", "daily")
+                                        desc = f"{_level_cn.get(lvl, lvl)}{_type_cn.get(bp.type.value.lower(), bp.type.value)}"
+                                        sig_type = bp.type.value.lower()
+                                        sig_date = bp.timestamp
+                                        sig_price = bp.price
+                                        sig_score = 90
+                                except:
+                                    pass
+                            
+                            signals.append(Signal(
+                                type=sig_type, date=sig_date, price=sig_price, score=sig_score,
+                                description=f"{desc} ✅ 底分型确认突破{entry:.2f}✓",
+                                macd_confirm=True, volume_confirm=False))
+                        break
+                        break
+
+            # 直接检查日线顶分型是否被跌破
+            if dly_core and dly_core.fractals:
+                for f in reversed(dly_core.fractals):
+                    if f.type == FractalType.TOP:
+                        exit_p = f.third_low
+                        if result.get('current_price', 0) < exit_p:
+                            # 判断是什么类型的卖点
+                            if multi_result.daily and multi_result.daily.latest_sell_point:
+                                sp = multi_result.daily.latest_sell_point
+                                sp_ts = str(sp.timestamp)[:10]
+                                sf_ts = str(f.timestamp)[:10]
+                                try:
+                                    from datetime import datetime
+                                    spd = datetime.strptime(sp_ts, '%Y-%m-%d')
+                                    sfd = datetime.strptime(sf_ts, '%Y-%m-%d')
+                                    dd = abs((sfd - spd).days)
+                                except:
+                                    dd = 99
+                                if dd <= 10:
+                                    lvl = getattr(sp, "level", "daily")
+                                    desc = f"{_level_cn.get(lvl, lvl)}{_type_cn.get(sp.type.value.lower(), sp.type.value)}"
+                                    signals.append(Signal(type=sp.type.value.lower(), date=sp.timestamp, price=sp.price, score=90,
+                                        description=f"{desc} ⚠ 顶分型确认跌破{exit_p:.2f}⚠", macd_confirm=True, volume_confirm=False))
+                                else:
+                                    signals.append(Signal(type='inflection', date='', price=exit_p, score=85,
+                                        description=f"日线小转大 ⚠ 顶分型确认跌破{exit_p:.2f}⚠", macd_confirm=True, volume_confirm=False))
+                            else:
+                                signals.append(Signal(type='inflection', date='', price=exit_p, score=85,
+                                    description=f"日线顶分型确认跌破{exit_p:.2f}⚠", macd_confirm=True, volume_confirm=False))
+                        break
             # 评分和过滤
             min_score = config.get("alert_rules", {}).get("signal_min_score", 60)
             scored = score_signals(signals)
             
             # 为每个信号添加级别信息
-            level_map = {s.description: "daily" if "日线" in s.description else "15min" for s in signals}
             for s in scored:
-                s["level"] = level_map.get(s["description"], "unknown")
+                desc = s.get("description", "")
+                if "15分钟" in desc:
+                    s["level"] = "15min"
+                elif "日线" in desc:
+                    s["level"] = "daily"
+                else:
+                    s["level"] = "unknown"
             
             filtered = filter_signals(scored, min_score)
             
@@ -530,7 +652,37 @@ def check_signal_alerts(
         name = analysis.get("name", code)
         multi_level = chanlun.get("multi_level")
 
+        # 只报最近5个交易日内的信号，旧信号不重复报警
+        now = datetime.now(_CST)
+        recent_signals = []
         for sig in signals:
+            sig_date_str = str(sig.get("date", ""))[:10]
+            try:
+                sig_date = datetime.strptime(sig_date_str, "%Y-%m-%d")
+                if (now - sig_date).days <= 7:  # 7天内（含非交易日约5个交易日）
+                    recent_signals.append(sig)
+            except:
+                continue
+        
+        if not recent_signals:
+            continue
+        
+        # 按日期排序（最新的在前）
+        recent_signals.sort(key=lambda s: str(s.get("date", "")), reverse=True)
+        
+        # 只保留最近的一个买点和一个卖点
+        latest_buy = None
+        latest_sell = None
+        for sig in recent_signals:
+            sig_type = sig.get("type", "")
+            if "buy" in sig_type and latest_buy is None:
+                latest_buy = sig
+            elif "sell" in sig_type and latest_sell is None:
+                latest_sell = sig
+            if latest_buy and latest_sell:
+                break
+        
+        for sig in filter(None, [latest_buy, latest_sell]):
             sig_type = sig.get("type", "")
             sig_date = sig.get("date", "")
             sig_price = sig.get("price", 0)
@@ -564,7 +716,6 @@ def check_signal_alerts(
                 in_position = code in position_codes
 
                 if in_position:
-                    # 持仓股出现买点 → 加仓机会
                     alerts.append({
                         "code": code,
                         "name": name,
@@ -577,7 +728,6 @@ def check_signal_alerts(
                         "action": "加仓机会",
                     })
                 else:
-                    # 自选股出现买点 → 关注/建仓
                     alerts.append({
                         "code": code,
                         "name": name,
@@ -595,7 +745,6 @@ def check_signal_alerts(
                 in_position = code in position_codes
 
                 if in_position:
-                    # 持仓股出现卖点 → 减仓/清仓
                     alerts.append({
                         "code": code,
                         "name": name,
@@ -608,7 +757,6 @@ def check_signal_alerts(
                         "action": "减仓信号",
                     })
                 else:
-                    # 自选股出现卖点 → 回避
                     alerts.append({
                         "code": code,
                         "name": name,
@@ -969,10 +1117,80 @@ class Watchdog:
         if all_data:
             self.store.update_prices(all_data)
 
+        # 6.5 写入通知文件（供 Dashboard 读取）
+        self._write_notifications(new_alerts, index_data)
+
         # 7. 打印摘要
         self._print_summary(realtime_data, index_data, analyses)
 
         return alerts
+
+    def _write_notifications(self, alerts: List[Dict], index_data: Dict):
+        """将本次报警写入通知文件（供 Dashboard 读取）"""
+        try:
+            now = datetime.now(_CST)
+            notif_path = current_dir / "notifications.json"
+            max_alerts = 200
+
+            # 读取已有记录
+            existing = []
+            if notif_path.exists():
+                try:
+                    with open(notif_path, "r", encoding="utf-8") as f:
+                        old = json.load(f)
+                    existing = old.get("alerts", [])
+                except:
+                    existing = []
+
+            # 为每条报警加上时间和级别中文
+            level_cn = {"daily": "日线", "15min": "15分钟"}
+
+            # 大盘概要
+            index_summary = {}
+            if index_data:
+                for code, data in index_data.items():
+                    name = data.get("name", code)
+                    change = data.get("change_pct", 0)
+                    sign = "+" if change > 0 else ""
+                    index_summary[name] = f"{sign}{change:.2f}%"
+
+            new_entries = []
+            for a in alerts:
+                sig_level = a.get("signal_level", "")
+                level_label = level_cn.get(sig_level, "")
+                new_entries.append({
+                    "code": a.get("code", ""),
+                    "name": a.get("name", ""),
+                    "type": a.get("type", ""),
+                    "level": a.get("level", "info"),
+                    "message": a.get("message", ""),
+                    "price": a.get("price", 0),
+                    "score": a.get("score", 0),
+                    "signal_level": sig_level,
+                    "signal_level_cn": level_label,
+                    "action": a.get("action", ""),
+                    "time": now.strftime("%H:%M:%S"),
+                    "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
+                })
+
+            # 合并：新报警放前面
+            all_alerts = new_entries + existing
+            all_alerts = all_alerts[:max_alerts]
+
+            data = {
+                "updated_at": now.strftime("%H:%M:%S"),
+                "update_time": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "indices": index_summary,
+                "alert_count": len(new_entries),
+                "total_alerts": len(all_alerts),
+                "alerts": all_alerts,
+            }
+
+            with open(notif_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+
+        except Exception as e:
+            logger.warning(f"写入通知文件失败: {e}")
 
     def _print_summary(self, realtime_data, index_data, analyses):
         """打印扫描摘要"""

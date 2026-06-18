@@ -13,8 +13,8 @@ from datetime import datetime as dt
 
 import uvicorn
 from sector_data import get_sector
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Request, Form
+from fastapi.responses import HTMLResponse, JSONResponse
 import requests
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
@@ -23,6 +23,7 @@ logger = logging.getLogger("dashboard")
 QMT_BRIDGE = "http://172.31.144.1:8890"
 POSITION_FILE = Path(__file__).parent.parent / "40-执行" / "持仓" / "当前持仓.json"
 WATCHLIST_FILE = Path(__file__).parent.parent / "00-研究" / "自选股" / "watchlist.json"
+NOTIFICATION_FILE = Path(__file__).parent / "notifications.json"
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 DASHBOARD_HTML = TEMPLATES_DIR / "dashboard.html"
 
@@ -199,6 +200,141 @@ def api_dashboard():
         _cache["time"] = datetime.now()
 
     return result
+
+
+@app.post("/api/position/add")
+def add_position(
+    code: str = Form(...),
+    name: str = Form(...),
+    shares: int = Form(...),
+    cost: float = Form(...),
+    buy_reason: str = Form(""),
+    stop_loss: float = Form(0),
+    level: str = Form("日线"),
+    weekly_note: str = Form(""),
+    daily_note: str = Form(""),
+    min15_note: str = Form(""),
+    target: str = Form(""),
+    warning_line: float = Form(0),
+    warning_meaning: str = Form(""),
+    stop_loss_meaning: str = Form("跌破无条件止损"),
+):
+    """手动录入持仓"""
+    try:
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        signal_date = datetime.now().strftime("%Y%m%d")
+
+        # 构建买入依据
+        buy_reason_data = {
+            "级别": level,
+            "周线": weekly_note or "-",
+            "日线": daily_note or "-",
+            "15分钟": min15_note or "-",
+            "入场规则": buy_reason,
+            "目标空间": target or "-",
+            "止损价": stop_loss,
+            "止损线含义": stop_loss_meaning,
+            "预警线": warning_line or round(cost * 0.97, 2),
+            "预警线含义": warning_meaning or "结构动摇信号",
+            "盈亏比": f"1:{round((target and float(target) or cost) - cost) / (cost - stop_loss) if stop_loss else 1:.1f}" if stop_loss else "-",
+        }
+
+        # 读取现有持仓
+        if POSITION_FILE.exists():
+            with open(POSITION_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        else:
+            data = {
+                "更新时间": now,
+                "信号日期": signal_date,
+                "持仓汇总": {
+                    "总资产": 0, "总市值": 0, "总盈亏": 0,
+                    "总手续费": 0, "可用资金": 0, "持仓比例%": 0,
+                    "持仓股数": 0, "初始资金": 1000000,
+                },
+                "持仓明细": [],
+            }
+
+        # 检查是否已存在该股票
+        existing = [p for p in data.get("持仓明细", []) if p.get("股票代码") == code]
+        if existing:
+            # 更新已有持仓（追加股数、加权成本）
+            old = existing[0]
+            old_shares = old.get("持股数量", 0)
+            old_cost = old.get("成本价", 0)
+            total_shares = old_shares + shares
+            total_cost = old_cost * old_shares + cost * shares
+            new_cost = round(total_cost / total_shares, 3) if total_shares > 0 else cost
+            old["持股数量"] = total_shares
+            old["成本价"] = new_cost
+            old["买入依据"] = buy_reason_data
+            old["当前价"] = cost
+            msg = f"已更新 {name}({code}) 持仓: {total_shares}股, 均价{new_cost}"
+        else:
+            # 新增持仓
+            new_pos = {
+                "股票代码": code,
+                "名称": name,
+                "持股数量": shares,
+                "成本价": cost,
+                "当前价": cost,
+                "买入依据": buy_reason_data,
+            }
+            data.setdefault("持仓明细", []).append(new_pos)
+            msg = f"已添加 {name}({code}) 持仓: {shares}股, 成本{cost}"
+
+        # 更新汇总
+        total_shares = sum(p.get("持股数量", 0) for p in data["持仓明细"])
+        total_cost = sum(p.get("成本价", 0) * p.get("持股数量", 0) for p in data["持仓明细"])
+        total_value = sum(p.get("当前价", p.get("成本价", 0)) * p.get("持股数量", 0) for p in data["持仓明细"])
+        data["更新时间"] = now
+        data["持仓汇总"].update({
+            "总市值": round(total_value, 2),
+            "总盈亏": round(total_value - total_cost, 2),
+            "持仓股数": total_shares,
+            "持仓比例%": round(total_value / max(data["持仓汇总"].get("初始资金", 1000000), 1) * 100, 2),
+        })
+
+        # 写入文件
+        POSITION_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(POSITION_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+        # 清理缓存
+        with _cache_lock:
+            _cache.pop("data", None)
+
+        logger.info(f"持仓更新成功: {msg}")
+        return {"ok": True, "message": msg}
+
+    except Exception as e:
+        logger.error(f"持仓更新失败: {e}")
+        return JSONResponse(status_code=500, content={"ok": False, "message": str(e)})
+
+
+@app.get("/api/notifications")
+def get_notifications():
+    """获取最近报警通知（供 Dashboard 轮询）"""
+    if not NOTIFICATION_FILE.exists():
+        return {
+            "alerts": [],
+            "updated_at": "",
+            "indices": {},
+            "alert_count": 0,
+        }
+    try:
+        with open(NOTIFICATION_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data
+    except Exception as e:
+        logger.warning(f"读取通知文件失败: {e}")
+        return {
+            "alerts": [],
+            "updated_at": "",
+            "indices": {},
+            "alert_count": 0,
+            "error": str(e),
+        }
 
 
 @app.get("/", response_class=HTMLResponse)

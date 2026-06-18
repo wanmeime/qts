@@ -52,11 +52,14 @@ def score_signals(
         }
 
     buy_type_scores = {
-        'buy_1': 90,     # 一类买点（最安全）
-        'buy_2': 80,     # 二类买点（右侧交易）
-        'buy_2_like': 75, # 类二买（上涨趋势最佳买点）
-        'sell_1': 90,    # 一类卖点
-        'sell_2': 75,    # 二类卖点
+        'buy1': 90,      # 一类买点（最安全）
+        'buy2': 80,      # 二类买点（右侧交易）
+        'buy2_like': 75, # 类二买（上涨趋势最佳买点）
+        'sell1': 90,     # 一类卖点
+        'sell2': 75,     # 二类卖点
+        'buy3': 65,      # 三类买点
+        'sell3': 65,     # 三类卖点
+        'inflection': 80, # 小转大
     }
 
     scored = []
@@ -140,11 +143,12 @@ def build_signal_dataframe(
 def _signal_type_cn(signal_type: str) -> str:
     """信号类型中文映射"""
     mapping = {
-        'buy_1': '一类买点',
-        'buy_2': '二类买点',
-        'buy_2_like': '类二买',
-        'sell_1': '一类卖点',
-        'sell_2': '二类卖点',
+        'buy1': '一类买点',
+        'buy2': '二类买点',
+        'buy3': '三类买点',
+        'sell1': '一类卖点',
+        'sell2': '二类卖点',
+        'sell3': '三类卖点',
     }
     return mapping.get(signal_type, signal_type)
 

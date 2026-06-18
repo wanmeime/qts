@@ -104,7 +104,7 @@ class MultiLevelAnalysis:
         - LevelAnalysis 分析结果
         """
         chanlun = ChanlunCore()
-        state = chanlun.analyze(df)
+        state = chanlun.analyze(df, level=level.value)
 
         # 分离买卖点
         buy_points = [p for p in chanlun.buy_sell_points

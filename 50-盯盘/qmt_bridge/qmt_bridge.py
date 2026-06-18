@@ -155,6 +155,9 @@ def api_kline():
     qmt_code = _ensure_qmt_code(code)
 
     try:
+        print(f"[kline] 请求: {code} period={period} count={count}")
+        
+        # 用 get_market_data_ex 获取前复权K线
         data = get_market_data_ex(
             field_list=[],
             stock_list=[qmt_code],
@@ -162,26 +165,117 @@ def api_kline():
             count=count,
             dividend_type="front",
         )
-        if qmt_code in data:
+        
+        if qmt_code in data and len(data[qmt_code]) > 0:
             df = data[qmt_code]
             records = []
             for idx in range(len(df)):
-                record = {}
+                row = {}
                 for col in df.columns:
                     val = df[col].iloc[idx]
                     if isinstance(val, (float, int)):
-                        if col in ("volume", "amount"):
-                            record[col] = int(val)
-                        else:
-                            record[col] = round(float(val), 4)
+                        row[col] = int(val) if col in ('volume','amount') else round(float(val), 4)
                     else:
-                        record[col] = str(val)
-                records.append(record)
+                        row[col] = str(val)
+                row['time'] = str(df.index[idx])
+                records.append(row)
+            print(f"[kline] 返回 {qmt_code}: {len(records)}条")
             return jsonify({"code": qmt_code, "period": period, "count": len(records), "data": records})
         else:
-            return jsonify({"error": f"未获取到 {qmt_code} 的K线数据"}), 404
+            print(f"[kline] get_market_data_ex 为空, 尝试 get_market_data...")
+            try:
+                from xtquant.xtdata import get_market_data
+                data2 = get_market_data(
+                    field_list=[],
+                    stock_list=[qmt_code],
+                    period=period,
+                    count=count,
+                    dividend_type='front',
+                )
+                if qmt_code in data2 and len(data2[qmt_code]) > 0:
+                    df2 = data2[qmt_code]
+                    records2 = []
+                    for idx in range(len(df2)):
+                        row2 = {}
+                        for col in df2.columns:
+                            val = df2[col].iloc[idx]
+                            row2[col] = int(val) if col in ('volume','amount') else round(float(val), 4)
+                        row2['time'] = str(df2.index[idx])
+                        records2.append(row2)
+                    print(f"[kline] get_market_data 返回 {len(records2)}条")
+                    return jsonify({"code": qmt_code, "period": period, "count": len(records2), "data": records2})
+            except Exception as e2:
+                print(f"[kline] get_market_data 失败: {e2}")
+            
+            return jsonify({"code": qmt_code, "count": 0, "data": [], "period": period}), 200
     except Exception as e:
+        print(f"[kline] 异常: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/kline_test")
+def api_kline_test():
+    """诊断K线接口，测试xtquant是否可用"""
+    import sys as _sys
+    results = {}
+    
+    try:
+        import xtquant.xtdata as _xtd
+        funcs = [f for f in dir(_xtd) if not f.startswith('_')]
+        results['xtdata_funcs'] = funcs
+    except Exception as e:
+        results['import_error'] = str(e)
+        return jsonify(results)
+    
+    # 2. 测试 get_market_data_ex - 不同参数组合
+    for code, period in [('000001.SZ', '1d'), ('000001', '1d'), ('000001.SZ', 'day')]:
+        try:
+            data = get_market_data_ex(
+                field_list=[],
+                stock_list=[code],
+                period=period,
+                count=5,
+                dividend_type='front',
+            )
+            stock_key = code if code in data else (list(data.keys())[0] if data else 'NO_KEY')
+            df = data.get(stock_key)
+            if df is not None and len(df) > 0:
+                results[f'ex({code},{period})'] = f'{len(df)}条 cols={list(df.columns)} idx={str(df.index[0])[:20]}...'
+            else:
+                results[f'ex({code},{period})'] = f'空 df={df is not None} len={len(df) if df is not None else 0}'
+        except Exception as e:
+            results[f'ex({code},{period})'] = f'错误: {str(e)[:60]}'
+    
+    # 3. 直接测试get_market_data(不带_ex)
+    try:
+        from xtquant.xtdata import get_market_data
+        for code in ['000001.SZ', '000001']:
+            try:
+                data2 = get_market_data(
+                    field_list=[], stock_list=[code],
+                    period='1d', count=5, dividend_type='front',
+                )
+                sk = code if code in data2 else (list(data2.keys())[0] if data2 else None)
+                if sk and sk in data2 and len(data2[sk]) > 0:
+                    results[f'plain({code})'] = f'{len(data2[sk])}条'
+                else:
+                    results[f'plain({code})'] = '空'
+            except Exception as e2:
+                results[f'plain({code})'] = str(e2)[:60]
+    except ImportError:
+        results['plain'] = 'get_market_data 不存在'
+    
+    # 4. 检查数据目录
+    import os as _os
+    for p in [_os.path.expanduser('~/.xtquant'), 
+              _os.path.expanduser('~/.quad_quant'), 
+              'D:/国金QMT交易端模拟/bin.x64/xtdata']:
+        if _os.path.exists(p):
+            results[f'dir_{p}'] = _os.listdir(p)[:10]
+        else:
+            results[f'dir_{p}'] = '不存在'
+    
+    return jsonify(results)
 
 
 @app.route("/api/instrument")
