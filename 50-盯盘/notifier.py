@@ -22,6 +22,15 @@ class Notifier:
         self.feishu_cfg = self.config.get("feishu", {})
         self.chat_id = self.feishu_cfg.get("chat_id", "oc_d2e8df3c676afa2c352d8ece0a9b6141")
 
+    def send(self, data) -> bool:
+        """通用发送接口（兼容 dict/str 两种格式）"""
+        if isinstance(data, dict):
+            msg = data.get("message", "") or data.get("title", "")
+            if msg:
+                return self.send_markdown(msg)
+            return False
+        return self.send_text(str(data))
+
     def send_text(self, text: str) -> bool:
         """发送文本消息"""
         if not self.feishu_cfg.get("enabled", True):

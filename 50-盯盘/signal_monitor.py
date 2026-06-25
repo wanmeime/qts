@@ -171,6 +171,7 @@ class SignalMonitor:
         self._realtime_last_check: Dict[str, float] = {}  # code → last_check_time
         self._realtime_checked_codes: set = set()         # 已检测过的新信号（防重复）
         self._realtime_detected_signals: Dict[str, dict] = {}  # 实时发现的信号模板
+        logger.info(f"实时底分型检测: {'已启用' if self._enable_realtime_detection else '未启用'} (ChanlunCore={'可用' if _HAS_CHANLUN_CORE else '不可用'})")
 
         # 缓存的信号模板（加载后全量缓存在内存）
         self._signals: Dict[str, List[Dict]] = {}  # signal_type → [signal_dicts]
@@ -639,14 +640,18 @@ class SignalMonitor:
                 logger.info(f"自动买入跳过: {code} 偏离{deviation:.1f}% > {price_deviation}%（不追高）")
                 return
 
-        # 计算买入量
+        # 计算买入量（至少1手=100股）
         if strategy == "fixed_amount":
             buy_amount = min(amount, max_amount)
-            volume = int(buy_amount / current_price / 100) * 100  # 整百股
+            raw_volume = int(buy_amount / current_price / 100) * 100
         elif strategy == "fixed_volume":
-            volume = cfg.get("volume", 100)
+            raw_volume = cfg.get("volume", 100)
         else:
-            volume = int(amount / current_price / 100) * 100
+            raw_volume = int(amount / current_price / 100) * 100
+
+        volume = max(raw_volume, 100)  # 至少1手
+        if volume * current_price > max_amount:
+            volume = int(max_amount / current_price / 100) * 100
 
         if volume <= 0:
             logger.warning(f"自动买入跳过: {code} 计算股数为0")
@@ -703,18 +708,17 @@ class SignalMonitor:
                 codes.add(rec["stock_code"])
         # 从持仓
         codes.update(self._position_codes)
-        # 没有持仓时从自选股文件补充
-        if not self._position_codes:
-            try:
-                wl_path = PROJECT_ROOT / "00-研究" / "自选股" / "watchlist.json"
-                if wl_path.exists():
-                    with open(wl_path) as f:
-                        wl = _json.load(f)
-                    for item in wl:
-                        c = item.get("code", "").strip()
-                        if c: codes.add(c)
-            except Exception:
-                pass
+        # 补充自选股（无论是否有持仓）
+        try:
+            wl_path = PROJECT_ROOT / "00-研究" / "自选股" / "watchlist.json"
+            if wl_path.exists():
+                with open(wl_path) as f:
+                    wl = _json.load(f)
+                for item in wl:
+                    c = item.get("code", "").strip()
+                    if c: codes.add(c)
+        except Exception:
+            pass
         codes = list(codes)
         if not codes:
             return
@@ -772,18 +776,41 @@ class SignalMonitor:
             core = ChanlunCore()
             state = core.analyze(df, level='daily')
 
-            # 查找新的底分型突破
-            bottoms = [f for f in core.fractals if f.type == FractalType.BOTTOM and f.third_high > 0]
+            # 查找新的底分型突破（只认昨天及之前完成的，排除当天未收盘的）
+            today_str = datetime.now(_CST).strftime("%Y-%m-%d")
+            bottoms = [
+                f for f in core.fractals
+                if f.type == FractalType.BOTTOM and f.third_high > 0
+                and not f.timestamp.startswith(today_str)  # 排除今天未收盘的分型
+            ]
             if not bottoms:
+                # 如果当天新形成了底分型，等明天收盘确认后再检测
                 continue
 
             latest_bottom = bottoms[-1]
 
-            # 检查当前价是否突破了 third_high
-            if price > latest_bottom.third_high:
+            # 检查自底分型形成之后，third_high 是否已被突破（避免追回调）
+            th = latest_bottom.third_high
+            already_broken = False
+            bottom_date_str = latest_bottom.timestamp[:10]
+            # 只检查底分型之后的完整K线
+            post_bottom_df = df[df.index > bottom_date_str]
+            if len(post_bottom_df) >= 1:
+                for i in range(len(post_bottom_df)):
+                    row = post_bottom_df.iloc[i]
+                    # 跳过今天的K线（未收盘）
+                    if str(row.name)[:10] == today_str:
+                        continue
+                    # 收盘价或最高价 >= third_high → 已突破过
+                    if row['close'] >= th or row['high'] >= th:
+                        already_broken = True
+                        break
+
+            # 检查当前价是否突破了 third_high（且之前未被突破）
+            if not already_broken and price > th:
                 name = quote.get("name", code)
                 logger.info(f"【实时检测】{name}({code}) 底分型突破! "
-                            f"third_high={latest_bottom.third_high:.2f} 当前={price:.2f}")
+                            f"third_high={th:.2f} 当前={price:.2f}")
 
                 # 防重复
                 self._realtime_checked_codes.add(code)

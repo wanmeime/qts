@@ -98,16 +98,21 @@ class PaperTrader:
         except Exception as e:
             logger.error(f"模拟盘持久化失败: {e}")
 
-    def buy(self, code: str, price: float, volume: int, strategy: str = "") -> dict:
-        """模拟买入"""
+    def buy(self, code: str, price: float, volume: int, strategy: str = "", limit_up: float = 0.0) -> dict:
+        """模拟买入（limit_up>0 时检查涨停约束）"""
         if volume <= 0 or price <= 0:
             return {"success": False, "error": "参数无效"}
+
+        # 涨停检查（由调用方传入涨停价）
+        if limit_up > 0 and price >= limit_up:
+            return {"success": False, "error": f"涨停价 {limit_up:.2f}，无法买入"}
 
         cost = price * volume
         if cost > self._cash:
             return {"success": False, "error": f"现金不足: 需{cost:.2f} 仅{self._cash:.2f}"}
 
-        # 更新持仓
+        # 更新持仓（记录买入日期用于 T+1 检查）
+        today = datetime.now(_CST).strftime("%Y-%m-%d")
         order_id = f"B{int(time.time()*1000)}"
         if code in self._positions:
             pos = self._positions[code]
@@ -116,6 +121,9 @@ class PaperTrader:
             pos["cost"] = round(total_cost / total_vol, 4)
             pos["volume"] = total_vol
             pos["available"] = total_vol
+            # 保留最早的买入日期
+            if "buy_date" not in pos or pos["buy_date"] > today:
+                pos["buy_date"] = pos.get("buy_date", today)
         else:
             self._positions[code] = {
                 "code": code,
@@ -123,6 +131,7 @@ class PaperTrader:
                 "available": volume,
                 "cost": price,
                 "frozen": 0,
+                "buy_date": today,
             }
 
         self._cash -= cost
@@ -141,12 +150,22 @@ class PaperTrader:
         logger.info(f"模拟买入: {code} {volume}股 @ {price} 策略={strategy} 剩余现金={self._cash:.2f}")
         return {"success": True, "order_id": order_id, "msg": f"买入{code} {volume}股 @ {price}"}
 
-    def sell(self, code: str, price: float, volume: int = 0) -> dict:
+    def sell(self, code: str, price: float, volume: int = 0, limit_down: float = 0.0) -> dict:
         """模拟卖出（volume=0 表示全仓卖）"""
         if code not in self._positions:
             return {"success": False, "error": f"未持仓 {code}"}
 
+        # 跌停检查
+        if limit_down > 0 and price <= limit_down:
+            return {"success": False, "error": f"跌停价 {limit_down:.2f}，无法卖出"}
+
+        # T+1 检查：当天买入不能当天卖出
         pos = self._positions[code]
+        today = datetime.now(_CST).strftime("%Y-%m-%d")
+        buy_date = pos.get("buy_date", "")
+        if buy_date == today:
+            return {"success": False, "error": f"T+1限制: 今日买入{code}，最早明天才能卖出"}
+
         sell_vol = volume if 0 < volume <= pos["volume"] else pos["volume"]
 
         revenue = price * sell_vol
@@ -225,9 +244,10 @@ class PaperTrader:
         """获取实时价格（从 QMT 行情）"""
         try:
             from xtquant.xtdata import get_full_tick
-            tick = get_full_tick([code])
-            if code in tick:
-                return tick[code].get("lastPrice", 0)
+            qmt_code = code if "." in code else (f"{code}.SH" if code.startswith(("6","9")) else f"{code}.SZ")
+            tick = get_full_tick([qmt_code])
+            if qmt_code in tick:
+                return tick[qmt_code].get("lastPrice", 0)
         except Exception:
             pass
         return 0

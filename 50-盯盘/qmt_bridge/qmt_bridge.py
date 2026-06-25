@@ -323,14 +323,14 @@ def _check_trade_ready() -> bool:
     return _paper_trader is not None
 
 
-def _order_buy(qmt_code: str, price: float, volume: int, strategy: str = "") -> dict:
+def _order_buy(qmt_code: str, price: float, volume: int, strategy: str = "", limit_up: float = 0.0) -> dict:
     """执行模拟买入"""
-    return _paper_trader.buy(qmt_code, price, volume, strategy)
+    return _paper_trader.buy(qmt_code, price, volume, strategy, limit_up=limit_up)
 
 
-def _order_sell(qmt_code: str, price: float, volume: int) -> dict:
+def _order_sell(qmt_code: str, price: float, volume: int, limit_down: float = 0.0) -> dict:
     """执行模拟卖出"""
-    return _paper_trader.sell(qmt_code, price, volume)
+    return _paper_trader.sell(qmt_code, price, volume, limit_down=limit_down)
 
 
 @app.route("/api/trade/buy", methods=["POST"])
@@ -353,7 +353,8 @@ def api_trade_buy():
     qmt_code = _ensure_qmt_code(code)
     strategy = data.get("strategy", "")
 
-    # 价格偏离市价超 5% 拒绝
+    # 价格偏离市价超 5% 拒绝 + 涨停检查
+    limit_up = 0.0
     try:
         tick = get_full_tick([qmt_code])
         if qmt_code in tick:
@@ -362,10 +363,19 @@ def api_trade_buy():
                 deviation = abs(price - mp) / mp * 100
                 if deviation > 5.0:
                     return jsonify({"success": False, "error": f"价格偏离市价 {deviation:.1f}%", "market_price": mp}), 400
+            # 涨停价计算
+            last_close = tick[qmt_code].get("lastClose", 0)
+            if last_close > 0:
+                bare = code.split(".")[0] if "." in code else code
+                is_chi_next = bare.startswith("300") or bare.startswith("688")
+                limit_pct = 0.20 if is_chi_next else 0.10
+                limit_up = round(last_close * (1 + limit_pct), 2)
+                if price >= limit_up:
+                    return jsonify({"success": False, "error": f"涨停价 {limit_up:.2f}（+{limit_pct*100:.0f}%），无法买入"}), 400
     except Exception:
         pass
 
-    result = _order_buy(qmt_code, price, volume, strategy)
+    result = _order_buy(qmt_code, price, volume, strategy, limit_up=limit_up)
     if result["success"]:
         logger.info(f"买入: {qmt_code} {volume}股 @ {price}（{strategy}）→ id={result['order_id']}")
     else:
@@ -392,12 +402,28 @@ def api_trade_sell():
         return jsonify({"success": False, "error": "参数不完整"}), 400
 
     qmt_code = _ensure_qmt_code(code)
-    result = _order_sell(qmt_code, price, volume)
+
+    # 跌停检查
+    limit_down = 0.0
+    try:
+        tick = get_full_tick([qmt_code])
+        if qmt_code in tick:
+            last_close = tick[qmt_code].get("lastClose", 0)
+            if last_close > 0:
+                bare = code.split(".")[0] if "." in code else code
+                is_chi_next = bare.startswith("300") or bare.startswith("688")
+                limit_pct = 0.20 if is_chi_next else 0.10
+                limit_down = round(last_close * (1 - limit_pct), 2)
+                if price <= limit_down:
+                    return jsonify({"success": False, "error": f"跌停价 {limit_down:.2f}（-{limit_pct*100:.0f}%），无法卖出"}), 400
+    except Exception:
+        pass
+
+    result = _order_sell(qmt_code, price, volume, limit_down=limit_down)
     if result["success"]:
         logger.info(f"卖出: {qmt_code} {volume}股 @ {price} → id={result['order_id']}")
     else:
         logger.error(f"卖出失败: {qmt_code} → {result['error']}")
-
     return jsonify({"success": result["success"], "order_id": result.get("order_id", ""), "msg": "委托已提交" if result["success"] else result["error"]})
 
 
