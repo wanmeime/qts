@@ -212,7 +212,7 @@ def generate_daily_signals(
                 fractal_high=fractal.high,
                 fractal_low=fractal.low,
                 third_high=fractal.third_high,
-                stop_loss=fractal.low,
+                stop_loss=fractal.third_low,
                 buy_label=label,
                 analysis_date=analysis_date,
             )
@@ -418,7 +418,14 @@ def run_static_analysis(
 
         # 风控阈值：优先使用持仓文件中手动设置的止损价
         buy_reason = p.get("买入依据", {})
-        manual_stop = buy_reason.get("止损价", 0) if isinstance(buy_reason, dict) else 0
+        manual_stop = 0
+        if isinstance(buy_reason, dict):
+            ms = buy_reason.get("止损价", 0)
+            if ms is not None and ms != "":
+                try:
+                    manual_stop = float(ms)
+                except (ValueError, TypeError):
+                    manual_stop = 0
         stop_loss = float(manual_stop) if manual_stop > 0 else (round(cost * 0.95, 2) if cost else 0)
         profit_30 = round(cost * 1.30, 2) if cost else 0
         alert_up = round(cost * 1.03, 2) if cost else 0

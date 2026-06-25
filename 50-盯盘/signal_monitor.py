@@ -666,6 +666,17 @@ class SignalMonitor:
             logger.warning("自动买入跳过: QMT host 未配置")
             return
 
+        # 取止损位（从实时检测的信号数据中取）
+        sl = 0.0
+        try:
+            sigs = self._signals.get("bottom_fractal", [])
+            for s in sigs:
+                if s["stock_code"] == code:
+                    sl = s.get("data", {}).get("stop_loss", 0)
+                    break
+        except Exception:
+            pass
+
         try:
             resp = requests.post(
                 f"{qmt_host}/api/trade/buy",
@@ -674,6 +685,7 @@ class SignalMonitor:
                     "price": round(current_price, 2),
                     "volume": volume,
                     "strategy": result.label or "auto",
+                    "stop_loss": round(sl, 2) if sl > 0 else 0,
                 },
                 timeout=5,
             )
@@ -924,7 +936,7 @@ class SignalMonitor:
                         "stock_name": name,
                         "third_high": latest_bottom.third_high,
                         "fractal_price": latest_bottom.price,
-                        "stop_loss": latest_bottom.low,
+                        "stop_loss": latest_bottom.third_low,
                         "current_price": price,
                         "buy_label": label or "realtime",
                         "status": "pending",
