@@ -29,20 +29,17 @@ from xtquant.xtdata import (
     get_stock_list_in_sector,
 )
 
-# ── 交易模块（模拟盘） ──
-_XTTRADE_AVAILABLE = False
+# ── 交易引擎（模拟盘，不依赖 xttrader） ──
 try:
-    from xtquant.xttrader import XtQuantTrader
-    from xtquant.xtconstant import STOCK_BUY, STOCK_SELL, FIX_PRICE
-    _XTTRADE_AVAILABLE = True
+    from paper_trader import PaperTrader
+    _PAPER_TRADER_AVAILABLE = True
 except ImportError:
-    print("[qmt_bridge] xttrader 模块不可用，交易接口将返回错误")
-    XtQuantTrader = None
-    STOCK_BUY = STOCK_SELL = FIX_PRICE = None
+    print("[qmt_bridge] paper_trader 模块不可用")
+    PaperTrader = None
+    _PAPER_TRADER_AVAILABLE = False
 
-# 全局交易对象和账户ID
-_xt_trader = None
-_xt_account_id = "88032229"  # MiniQMT 登录账户
+# 全局模拟盘对象
+_paper_trader = None
 
 # 股票名称缓存
 _name_cache = {}
@@ -305,63 +302,35 @@ def api_instrument():
 
 
 def _init_trade() -> bool:
-    """初始化交易模块，连接 MiniQMT 模拟盘"""
-    global _xt_trader, _xt_account_id
-    if not _XTTRADE_AVAILABLE:
-        logger.error("xttrader 模块不可用，交易功能禁用")
+    """初始化模拟交易引擎"""
+    global _paper_trader
+    if not _PAPER_TRADER_AVAILABLE:
+        logger.error("模拟交易引擎不可用")
         return False
     try:
-        # MiniQMT 用户数据路径
-        mini_qmt_path = r"D:\国金QMT交易端模拟\userdata_mini"
-        session_id = 1
-        _xt_trader = XtQuantTrader(mini_qmt_path, session_id)
-        _xt_trader.start()
-        _xt_trader.connect()
-        logger.info(f"交易模块初始化成功（账户={_xt_account_id}，路径={mini_qmt_path}）")
+        _paper_trader = PaperTrader()
+        _paper_trader.init(initial_cash=10000)
+        logger.info("模拟交易引擎初始化成功")
         return True
     except Exception as e:
-        logger.error(f"交易模块初始化失败: {e}")
-        _xt_trader = None
+        logger.error(f"模拟交易引擎初始化失败: {e}")
+        _paper_trader = None
         return False
 
 
 def _check_trade_ready() -> bool:
     """检查交易模块是否就绪"""
-    return _xt_trader is not None
+    return _paper_trader is not None
 
 
 def _order_buy(qmt_code: str, price: float, volume: int, strategy: str = "") -> dict:
     """执行模拟买入"""
-    try:
-        order_id = _xt_trader.order_stock(
-            account=_xt_account_id or "",
-            stock_code=qmt_code,
-            order_type=STOCK_BUY,
-            order_volume=volume,
-            price_type=FIX_PRICE,
-            price=price,
-            strategy_name=strategy,
-        )
-        return {"success": True, "order_id": str(order_id) if order_id else ""}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    return _paper_trader.buy(qmt_code, price, volume, strategy)
 
 
 def _order_sell(qmt_code: str, price: float, volume: int) -> dict:
     """执行模拟卖出"""
-    try:
-        order_id = _xt_trader.order_stock(
-            account=_xt_account_id or "",
-            stock_code=qmt_code,
-            order_type=STOCK_SELL,
-            order_volume=volume,
-            price_type=FIX_PRICE,
-            price=price,
-            strategy_name="signal_auto",
-        )
-        return {"success": True, "order_id": str(order_id) if order_id else ""}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    return _paper_trader.sell(qmt_code, price, volume)
 
 
 @app.route("/api/trade/buy", methods=["POST"])
@@ -438,19 +407,11 @@ def api_trade_positions():
     if not _check_trade_ready():
         return jsonify({"success": False, "error": "交易模块未就绪"}), 503
     try:
-        positions = _xt_trader.query_stock_positions(_xt_account_id or "")
-        result = []
-        for pos in positions:
-            result.append({
-                "code": pos.get("stock_code", ""),
-                "name": _get_stock_name(pos.get("stock_code", "")),
-                "volume": pos.get("volume", 0),
-                "available": pos.get("available_volume", 0),
-                "cost": pos.get("open_price", 0),
-                "current": pos.get("last_price", 0),
-                "pnl": pos.get("pnl_ratio", 0),
-            })
-        return jsonify({"success": True, "count": len(result), "positions": result})
+        positions = _paper_trader.get_positions()
+        # 补充名称
+        for p in positions:
+            p["name"] = _get_stock_name(p["code"])
+        return jsonify({"success": True, "count": len(positions), "positions": positions})
     except Exception as e:
         logger.error(f"查询持仓失败: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
@@ -462,7 +423,7 @@ def api_trade_asset():
     if not _check_trade_ready():
         return jsonify({"success": False, "error": "交易模块未就绪"}), 503
     try:
-        asset = _xt_trader.query_stock_asset(_xt_account_id or "")
+        asset = _paper_trader.get_asset()
         return jsonify({"success": True, "asset": asset})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -470,23 +431,12 @@ def api_trade_asset():
 
 @app.route("/api/trade/orders")
 def api_trade_orders():
-    """查询当日委托"""
+    """查询委托记录"""
     if not _check_trade_ready():
         return jsonify({"success": False, "error": "交易模块未就绪"}), 503
     try:
-        orders = _xt_trader.query_stock_orders(_xt_account_id or "")
-        result = []
-        for o in orders:
-            result.append({
-                "order_id": o.get("order_id", ""),
-                "code": o.get("stock_code", ""),
-                "direction": "buy" if o.get("order_type") == STOCK_BUY else "sell",
-                "price": o.get("price", 0),
-                "volume": o.get("order_volume", 0),
-                "filled": o.get("filled_volume", 0),
-                "status": o.get("order_status", ""),
-            })
-        return jsonify({"success": True, "count": len(result), "orders": result})
+        orders = _paper_trader.get_orders()
+        return jsonify({"success": True, "count": len(orders), "orders": orders})
     except Exception as e:
         logger.error(f"查询委托失败: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
@@ -509,8 +459,8 @@ if __name__ == "__main__":
         _init_trade()
 
     logger.info(f"QMT 行情转发服务启动 → http://{args.host}:{args.port}")
-    if _xt_trader:
-        logger.info("交易接口: 已启用（模拟盘）")
+    if _paper_trader:
+        logger.info("交易接口: 已启用（独立模拟盘）")
     else:
         logger.info("交易接口: 未就绪（仅行情模式）")
     app.run(host=args.host, port=args.port, debug=False, threaded=True)
