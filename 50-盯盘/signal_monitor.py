@@ -41,6 +41,15 @@ from chanlun_service import ChanlunService, AnalysisRequest
 
 from notifier import Notifier
 
+# 实时缠论检测
+sys.path.insert(0, str(PROJECT_ROOT / "10-策略" / "缠论Agent"))
+try:
+    from chanlun_core import ChanlunCore, FractalType, Direction
+    _HAS_CHANLUN_CORE = True
+except ImportError:
+    _HAS_CHANLUN_CORE = False
+    ChanlunCore = None
+
 logger = logging.getLogger(__name__)
 
 _CST = timezone(timedelta(hours=8))
@@ -156,6 +165,13 @@ class SignalMonitor:
         self._auto_trade_config = auto_trade_config or {}
         self._auto_traded_codes: set = set()  # 已自动买入的股票代码（防重复买入）
 
+        # 实时底分型检测（盘中不依赖模板）
+        self._enable_realtime_detection = True
+        self._realtime_scan_counter = 0  # 调试计数
+        self._realtime_last_check: Dict[str, float] = {}  # code → last_check_time
+        self._realtime_checked_codes: set = set()         # 已检测过的新信号（防重复）
+        self._realtime_detected_signals: Dict[str, dict] = {}  # 实时发现的信号模板
+
         # 缓存的信号模板（加载后全量缓存在内存）
         self._signals: Dict[str, List[Dict]] = {}  # signal_type → [signal_dicts]
         self._position_codes: set = set()          # 持仓代码集合
@@ -221,9 +237,15 @@ class SignalMonitor:
     def tick(self):
         """
         单次扫描（供外部事件循环调用）
-
-        如果 run() 阻塞模式不适合，外部可在自己的循环中调用 tick()
         """
+        # 实时检测：不依赖模板，盘中直接发现新底分型突破
+        if self._enable_realtime_detection and _HAS_CHANLUN_CORE:
+            try:
+                self._scan_realtime_signals()
+            except Exception as e:
+                logger.error(f"实时检测异常: {e}")
+
+        # 没有模板信号就不走了（模板检测走下面）
         if not self._signals:
             return
 
@@ -657,6 +679,166 @@ class SignalMonitor:
             logger.error(f"自动买入失败: 无法连接 QMT Bridge ({qmt_host})")
         except Exception as e:
             logger.error(f"自动买入异常: {e}")
+
+    # ============================================================
+    # 实时底分型检测（盘中直接发现新买点）
+    # ============================================================
+
+    def _scan_realtime_signals(self):
+        """
+        盘中扫描所有监控股票，实时检测新形成的底分型。
+
+        不依赖 static_analyzer 盘后生成的信号模板，
+        对涨幅 > 2% 的股票运行 ChanlunCore 分析，
+        发现新底分型突破 → 直接生成信号并触发自动买入。
+        """
+        import urllib.request as _ureq
+        import json as _json
+
+        # 获取所有监控代码（持仓+自选），不从模板取
+        codes = set()
+        # 从信号模板
+        for sig_type, records in self._signals.items():
+            for rec in records:
+                codes.add(rec["stock_code"])
+        # 从持仓
+        codes.update(self._position_codes)
+        # 没有持仓时从自选股文件补充
+        if not self._position_codes:
+            try:
+                wl_path = PROJECT_ROOT / "00-研究" / "自选股" / "watchlist.json"
+                if wl_path.exists():
+                    with open(wl_path) as f:
+                        wl = _json.load(f)
+                    for item in wl:
+                        c = item.get("code", "").strip()
+                        if c: codes.add(c)
+            except Exception:
+                pass
+        codes = list(codes)
+        if not codes:
+            return
+
+        # 获取实时行情
+        quotes = self._fetch_real_time(codes)
+        now = time.time()
+
+        # 逐个检查有异动的股票
+        for code, quote in quotes.items():
+            change_pct = abs(quote.get("change_pct", 0))
+            price = quote.get("price", 0)
+
+            # 涨幅 < 2% 跳过（减少计算量）
+            if change_pct < 2.0:
+                continue
+
+            # 同一只股票 5 分钟内不重复检查
+            last_check = self._realtime_last_check.get(code, 0)
+            if now - last_check < 300:
+                continue
+
+            # 已检测过的跳过
+            if code in self._realtime_checked_codes:
+                continue
+
+            self._realtime_last_check[code] = now
+
+            # 获取K线数据
+            try:
+                symbol = f"sh{code[3:]}" if code.startswith("6") else f"sz{code[3:]}"
+                if "." in code:
+                    bare = code.split(".")[0]
+                    symbol = f"sh{bare}" if bare.startswith("6") else f"sz{bare}"
+                else:
+                    symbol = f"sz{code}"
+
+                url = f"https://quotes.sina.cn/cn/api/jsonp.php/=/CN_MarketDataService.getKLineData?symbol={symbol}&scale=240&ma=no&datalen=90"
+                req = _ureq.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                resp = _ureq.urlopen(req, timeout=8)
+                text = resp.read().decode('gbk')
+                s = text.index('['); e = text.rindex(']') + 1
+                data = _json.loads(text[s:e])
+                if len(data) < 10:
+                    continue
+            except Exception:
+                continue
+
+            df = pd.DataFrame(data)
+            for col in ['open', 'close', 'high', 'low']:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+            df.index = pd.to_datetime(df['day'])
+
+            # 运行缠论
+            core = ChanlunCore()
+            state = core.analyze(df, level='daily')
+
+            # 查找新的底分型突破
+            bottoms = [f for f in core.fractals if f.type == FractalType.BOTTOM and f.third_high > 0]
+            if not bottoms:
+                continue
+
+            latest_bottom = bottoms[-1]
+
+            # 检查当前价是否突破了 third_high
+            if price > latest_bottom.third_high:
+                name = quote.get("name", code)
+                logger.info(f"【实时检测】{name}({code}) 底分型突破! "
+                            f"third_high={latest_bottom.third_high:.2f} 当前={price:.2f}")
+
+                # 防重复
+                self._realtime_checked_codes.add(code)
+
+                # 查买卖点标签
+                label = ""
+                for p in reversed(core.buy_sell_points):
+                    if p.type.value.startswith("buy"):
+                        label = p.type.value
+                        break
+
+                # 生成一个临时信号结果
+                fake_signal = {
+                    "id": int(now * 1000),
+                    "stock_code": code,
+                    "signal_type": "bottom_fractal",
+                    "data": {
+                        "stock_code": code,
+                        "stock_name": name,
+                        "third_high": latest_bottom.third_high,
+                        "fractal_price": latest_bottom.price,
+                        "stop_loss": latest_bottom.low,
+                        "current_price": price,
+                        "buy_label": label or "realtime",
+                        "status": "pending",
+                        "source": "realtime_detection",
+                    }
+                }
+
+                # 保存到实时信号缓存（假装是模板，供后续tick持续监测）
+                if "bottom_fractal" not in self._signals:
+                    self._signals["bottom_fractal"] = []
+                # 检查是否已有此代码的信号
+                existing = [r for r in self._signals["bottom_fractal"] if r["stock_code"] == code]
+                if not existing:
+                    self._signals["bottom_fractal"].append(fake_signal)
+                    logger.info(f"实时信号已加入监测队列: {name}({code})")
+
+                # 立即触发买入
+                result = SignalMatchResult(
+                    signal_id=fake_signal["id"],
+                    stock_code=code,
+                    stock_name=name,
+                    signal_type="bottom_fractal",
+                    label=label,
+                    action="buy",
+                    message=f"实时检测: {name} 底分型突破 {latest_bottom.third_high:.2f}",
+                    price=price,
+                )
+                self._emit_result(result)
+
+        # 调试日志（每30次扫描输出一次）
+        self._realtime_scan_counter += 1
+        if self._realtime_scan_counter % 30 == 0:
+            logger.info(f"[实时检测] 扫描 {len(codes)} 只, 已发现 {len(self._realtime_checked_codes)} 个新信号")
 
     def get_current_signals(self) -> Dict:
         """获取当前信号状态（供 dashboard 调用）"""
