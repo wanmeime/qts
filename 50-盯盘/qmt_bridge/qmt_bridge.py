@@ -323,9 +323,9 @@ def _check_trade_ready() -> bool:
     return _paper_trader is not None
 
 
-def _order_buy(qmt_code: str, price: float, volume: int, strategy: str = "", limit_up: float = 0.0) -> dict:
+def _order_buy(qmt_code: str, price: float, volume: int, strategy: str = "", limit_up: float = 0.0, stop_loss: float = 0.0) -> dict:
     """执行模拟买入"""
-    return _paper_trader.buy(qmt_code, price, volume, strategy, limit_up=limit_up)
+    return _paper_trader.buy(qmt_code, price, volume, strategy, limit_up=limit_up, stop_loss=stop_loss)
 
 
 def _order_sell(qmt_code: str, price: float, volume: int, limit_down: float = 0.0) -> dict:
@@ -375,9 +375,11 @@ def api_trade_buy():
     except Exception:
         pass
 
-    result = _order_buy(qmt_code, price, volume, strategy, limit_up=limit_up)
+    stop_loss = data.get("stop_loss", 0.0)
+    result = _order_buy(qmt_code, price, volume, strategy, limit_up=limit_up, stop_loss=stop_loss)
     if result["success"]:
-        logger.info(f"买入: {qmt_code} {volume}股 @ {price}（{strategy}）→ id={result['order_id']}")
+        sl_msg = f" 止损={stop_loss}" if stop_loss > 0 else ""
+        logger.info(f"买入: {qmt_code} {volume}股 @ {price}（{strategy}）{sl_msg}→ id={result['order_id']}")
     else:
         logger.error(f"买入失败: {qmt_code} → {result['error']}")
 

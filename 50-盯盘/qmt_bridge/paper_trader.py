@@ -98,8 +98,8 @@ class PaperTrader:
         except Exception as e:
             logger.error(f"模拟盘持久化失败: {e}")
 
-    def buy(self, code: str, price: float, volume: int, strategy: str = "", limit_up: float = 0.0) -> dict:
-        """模拟买入（limit_up>0 时检查涨停约束）"""
+    def buy(self, code: str, price: float, volume: int, strategy: str = "", limit_up: float = 0.0, stop_loss: float = 0.0) -> dict:
+        """模拟买入（limit_up>0 时检查涨停约束，stop_loss>0 时记录止损位）"""
         if volume <= 0 or price <= 0:
             return {"success": False, "error": "参数无效"}
 
@@ -132,6 +132,7 @@ class PaperTrader:
                 "cost": price,
                 "frozen": 0,
                 "buy_date": today,
+                "stop_loss": round(stop_loss, 2) if stop_loss > 0 else 0,
             }
 
         self._cash -= cost
@@ -214,6 +215,7 @@ class PaperTrader:
                 "current": current_price,
                 "pnl": round(pnl, 2),
                 "pnl_pct": round(pnl_pct, 2),
+                "stop_loss": pos.get("stop_loss", 0),
                 "market_value": round(current_price * pos["volume"], 2) if current_price else 0,
             })
         return result
