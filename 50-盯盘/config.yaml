@@ -106,3 +106,21 @@ signal_monitor:
   tick_interval: 5.0
   # 15分钟背驰段检查间隔 (秒)
   divergence_check_interval: 60.0
+
+# 自动交易（模拟盘）
+auto_trade:
+  # 是否启用自动交易（true=信号触发时自动在模拟盘买卖）
+  enabled: true
+  # QMT Bridge 地址（Windows 端）
+  qmt_host: "http://172.31.144.1:8890"
+  # 仓位策略: fixed_amount | fixed_volume
+  strategy: "fixed_amount"
+  # 每笔固定金额（元）
+  amount_per_trade: 10000
+  # 单笔最大金额（元，安全保护）
+  max_single_amount: 50000
+  # 当前价偏离 third_high 超过此比例（%）时不追
+  price_deviation: 3.0
+  # 允许自动交易的信号类型
+  allowed_signals:
+    - bottom_fractal

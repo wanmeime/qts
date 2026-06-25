@@ -67,6 +67,15 @@ def on_signal_callback(result):
     except Exception as e:
         logger.error(f"发送通知失败: {e}")
 
+# 自动交易配置
+auto_trade_cfg = config.get("auto_trade", {})
+auto_trade_enabled = auto_trade_cfg.get("enabled", False)
+qmt_host = auto_trade_cfg.get("qmt_host", "")
+if auto_trade_enabled and qmt_host:
+    logger.info(f"自动交易: 已启用 → QMT Bridge ({qmt_host})")
+else:
+    logger.info("自动交易: 未启用（仅通知模式）")
+
 monitor = SignalMonitor(
     state_store=store,
     chanlun_service=chanlun_service,
@@ -75,6 +84,9 @@ monitor = SignalMonitor(
     tick_interval=tick_interval,
     divergence_check_interval=divergence_check_interval,
     fetcher=fetcher,
+    auto_trade_enabled=auto_trade_enabled,
+    qmt_host=qmt_host if auto_trade_enabled else None,
+    auto_trade_config=auto_trade_cfg,
 )
 
 # 加载信号

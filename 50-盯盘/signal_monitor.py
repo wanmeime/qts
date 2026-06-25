@@ -23,6 +23,7 @@ from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Callable, Any
 
+import requests
 import pandas as pd
 
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -141,6 +142,12 @@ class SignalMonitor:
         self.tick_interval = tick_interval
         self.divergence_check_interval = divergence_check_interval
         self._running = False
+
+        # 自动交易参数
+        self._auto_trade_enabled = auto_trade_enabled
+        self._qmt_host = qmt_host
+        self._auto_trade_config = auto_trade_config or {}
+        self._auto_traded_codes: set = set()  # 已自动买入的股票代码（防重复买入）
 
         # 缓存的信号模板（加载后全量缓存在内存）
         self._signals: Dict[str, List[Dict]] = {}  # signal_type → [signal_dicts]
@@ -542,8 +549,107 @@ class SignalMonitor:
             except Exception as e:
                 logger.error(f"发送通知异常: {e}")
 
+        # 自动交易
+        if self._auto_trade_enabled:
+            try:
+                self._try_auto_buy(result)
+            except Exception as e:
+                logger.error(f"自动交易异常: {e}")
+
         # 日志
         logger.info(f"[信号] {notification.get('title', '')}: {result.message}")
+
+    # ============================================================
+    # 自动交易（模拟盘）
+    # ============================================================
+
+    def _try_auto_buy(self, result: SignalMatchResult):
+        """
+        信号触发时自动买入模拟盘。
+        只对底分型突破信号（bottom_fractal）触发买入。
+        """
+        # 只对买入信号操作
+        if result.action not in ("buy",):
+            return
+        if result.signal_type not in ("bottom_fractal",):
+            return
+
+        code = result.stock_code
+
+        # 防重复买入（同一只股票一天内只买一次）
+        if code in self._auto_traded_codes:
+            return
+
+        # 获取配置
+        cfg = self._auto_trade_config
+        allowed = cfg.get("allowed_signals", ["bottom_fractal"])
+        if result.signal_type not in allowed:
+            return
+
+        # 计算买入数量和价格
+        current_price = result.price
+        if current_price <= 0:
+            logger.warning(f"自动买入跳过: {code} 当前价无效 {current_price}")
+            return
+
+        strategy = cfg.get("strategy", "fixed_amount")
+        amount = cfg.get("amount_per_trade", 10000)
+        max_amount = cfg.get("max_single_amount", 50000)
+        price_deviation = cfg.get("price_deviation", 3.0)
+
+        # 获取信号模板中的 third_high（突破确认价）
+        matched_data = getattr(result, "matched_signal", None) or {}
+        third_high = 0
+        if isinstance(matched_data, dict):
+            third_high = matched_data.get("data", {}).get("third_high", 0)
+
+        # 当前价偏离 third_high 超过阈值 → 不追
+        if third_high > 0:
+            deviation = (current_price - third_high) / third_high * 100
+            if deviation > price_deviation:
+                logger.info(f"自动买入跳过: {code} 偏离{deviation:.1f}% > {price_deviation}%（不追高）")
+                return
+
+        # 计算买入量
+        if strategy == "fixed_amount":
+            buy_amount = min(amount, max_amount)
+            volume = int(buy_amount / current_price / 100) * 100  # 整百股
+        elif strategy == "fixed_volume":
+            volume = cfg.get("volume", 100)
+        else:
+            volume = int(amount / current_price / 100) * 100
+
+        if volume <= 0:
+            logger.warning(f"自动买入跳过: {code} 计算股数为0")
+            return
+
+        # 发请求到 QMT Bridge
+        qmt_host = self._qmt_host
+        if not qmt_host:
+            logger.warning("自动买入跳过: QMT host 未配置")
+            return
+
+        try:
+            resp = requests.post(
+                f"{qmt_host}/api/trade/buy",
+                json={
+                    "code": code,
+                    "price": round(current_price, 2),
+                    "volume": volume,
+                    "strategy": result.label or "auto",
+                },
+                timeout=5,
+            )
+            result_data = resp.json()
+            if result_data.get("success"):
+                self._auto_traded_codes.add(code)
+                logger.info(f"✅ 自动买入成功: {code} {volume}股 @ {current_price}")
+            else:
+                logger.warning(f"❌ 自动买入失败: {code} → {result_data.get('error', '未知')}")
+        except requests.exceptions.ConnectionError:
+            logger.error(f"自动买入失败: 无法连接 QMT Bridge ({qmt_host})")
+        except Exception as e:
+            logger.error(f"自动买入异常: {e}")
 
     def get_current_signals(self) -> Dict:
         """获取当前信号状态（供 dashboard 调用）"""

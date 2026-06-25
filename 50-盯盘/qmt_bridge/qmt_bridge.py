@@ -29,6 +29,18 @@ from xtquant.xtdata import (
     get_stock_list_in_sector,
 )
 
+# ── 交易模块（模拟盘） ──
+_XTTRADE_AVAILABLE = False
+try:
+    from xtquant.xttrade import XtQuantTrade, OPT_BUY, OPT_SELL, ORDER_TYPE_LIMIT
+    _XTTRADE_AVAILABLE = True
+except ImportError:
+    print("[qmt_bridge] xttrade 模块不可用，交易接口将返回错误")
+    OPT_BUY = OPT_SELL = ORDER_TYPE_LIMIT = None
+
+# 全局交易对象
+_xt_trade = None
+
 # 股票名称缓存
 _name_cache = {}
 
@@ -285,6 +297,183 @@ def api_instrument():
 
 
 # ============================================================
+# 交易接口 — 模拟盘自动交易
+# ============================================================
+
+
+def _init_trade() -> bool:
+    """初始化交易模块，连接 MiniQMT 模拟盘会话"""
+    global _xt_trade
+    if not _XTTRADE_AVAILABLE:
+        logger.error("xttrade 模块不可用，交易功能禁用")
+        return False
+    try:
+        # XtQuantTrade 会自动连接当前运行的 MiniQMT 会话
+        _xt_trade = XtQuantTrade()
+        logger.info("交易模块初始化成功（模拟盘）")
+        return True
+    except Exception as e:
+        logger.error(f"交易模块初始化失败: {e}")
+        _xt_trade = None
+        return False
+
+
+def _check_trade_ready() -> bool:
+    """检查交易模块是否就绪"""
+    return _xt_trade is not None
+
+
+@app.route("/api/trade/buy", methods=["POST"])
+def api_trade_buy():
+    """模拟盘买入"""
+    if not _check_trade_ready():
+        return jsonify({"success": False, "error": "交易模块未就绪"}), 503
+
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"success": False, "error": "请求体为空"}), 400
+
+    code = data.get("code", "")
+    price = data.get("price", 0)
+    volume = data.get("volume", 0)
+
+    if not code or price <= 0 or volume <= 0:
+        return jsonify({"success": False, "error": f"参数不完整: code={code} price={price} volume={volume}"}), 400
+
+    qmt_code = _ensure_qmt_code(code)
+    strategy = data.get("strategy", "")
+
+    # 价格合理性检查：偏离当前市价超 5% 拒绝
+    try:
+        tick = get_full_tick([qmt_code])
+        if qmt_code in tick:
+            mp = tick[qmt_code].get("lastPrice", 0)
+            if mp > 0:
+                deviation = abs(price - mp) / mp * 100
+                if deviation > 5.0:
+                    logger.warning(f"买入价格偏离市价 {deviation:.1f}%，拒绝: {qmt_code} {price} vs 市价{mp}")
+                    return jsonify({
+                        "success": False, "error": f"价格偏离市价 {deviation:.1f}%，超过5%限制",
+                        "market_price": mp, "order_price": price,
+                    }), 400
+    except Exception as e:
+        logger.warning(f"价格合理性检查失败（跳过）: {e}")
+
+    try:
+        order_id = _xt_trade.order_stock(
+            stock_code=qmt_code,
+            order_type=ORDER_TYPE_LIMIT,
+            price=price,
+            amount=volume,
+            direction=OPT_BUY,
+        )
+        logger.info(f"📈 模拟买入: {qmt_code} {volume}股 @ {price}（{strategy}）→ order_id={order_id}")
+        return jsonify({
+            "success": True,
+            "order_id": str(order_id) if order_id else "",
+            "code": qmt_code,
+            "price": price,
+            "volume": volume,
+            "strategy": strategy,
+            "msg": "委托已提交（模拟盘）",
+        })
+    except Exception as e:
+        logger.error(f"模拟买入失败: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/trade/sell", methods=["POST"])
+def api_trade_sell():
+    """模拟盘卖出"""
+    if not _check_trade_ready():
+        return jsonify({"success": False, "error": "交易模块未就绪"}), 503
+
+    data = request.get_json(force=True, silent=True)
+    if not data:
+        return jsonify({"success": False, "error": "请求体为空"}), 400
+
+    code = data.get("code", "")
+    price = data.get("price", 0)
+    volume = data.get("volume", 0)
+
+    if not code or price <= 0 or volume <= 0:
+        return jsonify({"success": False, "error": f"参数不完整: code={code} price={price} volume={volume}"}), 400
+
+    qmt_code = _ensure_qmt_code(code)
+
+    try:
+        order_id = _xt_trade.order_stock(
+            stock_code=qmt_code,
+            order_type=ORDER_TYPE_LIMIT,
+            price=price,
+            amount=volume,
+            direction=OPT_SELL,
+        )
+        logger.info(f"📉 模拟卖出: {qmt_code} {volume}股 @ {price} → order_id={order_id}")
+        return jsonify({
+            "success": True,
+            "order_id": str(order_id) if order_id else "",
+            "code": qmt_code,
+            "price": price,
+            "volume": volume,
+            "msg": "委托已提交（模拟盘）",
+        })
+    except Exception as e:
+        logger.error(f"模拟卖出失败: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/trade/positions")
+def api_trade_positions():
+    """查询模拟持仓"""
+    if not _check_trade_ready():
+        return jsonify({"success": False, "error": "交易模块未就绪"}), 503
+    try:
+        positions = _xt_trade.get_positions()
+        result = []
+        for pos in positions:
+            result.append({
+                "code": pos.get("stock_code", ""),
+                "name": _get_stock_name(pos.get("stock_code", "")),
+                "volume": pos.get("volume", 0),
+                "available": pos.get("available_volume", 0),
+                "cost": pos.get("open_price", 0),
+                "current": pos.get("last_price", 0),
+                "pnl": pos.get("pnl", 0),
+                "pnl_pct": pos.get("pnl_ratio", 0),
+            })
+        return jsonify({"success": True, "count": len(result), "positions": result})
+    except Exception as e:
+        logger.error(f"查询持仓失败: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/trade/orders")
+def api_trade_orders():
+    """查询当日委托"""
+    if not _check_trade_ready():
+        return jsonify({"success": False, "error": "交易模块未就绪"}), 503
+    try:
+        orders = _xt_trade.get_orders()
+        result = []
+        for o in orders:
+            result.append({
+                "order_id": o.get("order_id", ""),
+                "code": o.get("stock_code", ""),
+                "direction": "buy" if o.get("direction") == OPT_BUY else "sell",
+                "price": o.get("price", 0),
+                "volume": o.get("order_volume", 0),
+                "filled": o.get("filled_volume", 0),
+                "status": o.get("order_status", ""),
+                "time": o.get("order_time", ""),
+            })
+        return jsonify({"success": True, "count": len(result), "orders": result})
+    except Exception as e:
+        logger.error(f"查询委托失败: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ============================================================
 # 主入口
 # ============================================================
 
@@ -293,7 +482,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="QMT 行情转发服务")
     parser.add_argument("--port", type=int, default=8890, help="监听端口")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="监听地址")
+    parser.add_argument("--simulate", action="store_true", default=True, help="模拟盘模式")
     args = parser.parse_args()
 
+    # 初始化交易模块
+    if args.simulate:
+        _init_trade()
+
     logger.info(f"QMT 行情转发服务启动 → http://{args.host}:{args.port}")
+    if _xt_trade:
+        logger.info("交易接口: 已启用（模拟盘）")
+    else:
+        logger.info("交易接口: 未就绪（仅行情模式）")
     app.run(host=args.host, port=args.port, debug=False, threaded=True)
