@@ -131,9 +131,12 @@ class SignalMonitor:
         chanlun_service: Optional[ChanlunService] = None,
         notifier: Optional[Notifier] = None,
         on_signal: Optional[Callable] = None,
-        tick_interval: float = 5.0,       # 主循环间隔（秒）
-        divergence_check_interval: float = 60.0,  # 背驰段检查间隔
-        fetcher: Optional[Any] = None,    # 行情源（默认 RealtimeFetcher）
+        tick_interval: float = 5.0,
+        divergence_check_interval: float = 60.0,
+        fetcher: Optional[Any] = None,
+        auto_trade_enabled: bool = False,
+        qmt_host: Optional[str] = None,
+        auto_trade_config: Optional[Dict] = None,
     ):
         self.state_store = state_store
         self.chanlun_service = chanlun_service
@@ -144,6 +147,10 @@ class SignalMonitor:
         self._running = False
 
         # 自动交易参数
+        self._auto_trade_enabled = auto_trade_enabled
+        self._qmt_host = qmt_host
+        self._auto_trade_config = auto_trade_config or {}
+        self._auto_traded_codes: set = set()
         self._auto_trade_enabled = auto_trade_enabled
         self._qmt_host = qmt_host
         self._auto_trade_config = auto_trade_config or {}
