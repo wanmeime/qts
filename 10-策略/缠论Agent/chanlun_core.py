@@ -35,6 +35,7 @@ class BuySellType(Enum):
     SELL1 = "sell1"
     SELL2 = "sell2"
     SELL3 = "sell3"
+    SECONDARY_BUY = "secondary_buy"
 
 
 class Level(Enum):
@@ -343,8 +344,9 @@ class ChanlunCore:
                 continue
 
             # 条件3：至少有一个中枢（下跌趋势结构）
+            # 离开中枢的下跌笔价位自然在中枢之下，放宽为"起点在中枢底附近或以上"
             has_zs = any(
-                zs.low <= curr_bi.low <= zs.high or zs.low <= curr_bi.high <= zs.high
+                curr_bi.high >= zs.low * 0.99  # 起点不低于中枢底的99%
                 for zs in self.zhong_shus
             )
             if not has_zs:
@@ -367,8 +369,10 @@ class ChanlunCore:
             if not is_div:
                 continue
 
+            # 中枢条件：当前上涨笔的起点（回调低点）在中枢顶部附近或以内
+            # 离开中枢的笔价位自然在中枢之上，不做严格重叠要求
             has_zs = any(
-                zs.low <= curr_bi.low <= zs.high or zs.low <= curr_bi.high <= zs.high
+                curr_bi.low <= zs.high * 1.01  # 起点不高于中枢顶的101%
                 for zs in self.zhong_shus
             )
             if not has_zs:
@@ -379,7 +383,78 @@ class ChanlunCore:
                 curr_top.price, curr_top.index, level=level
             ))
 
-        # 获取已经识别到的一买/一卖位置
+        # === 小转大一买：无背驰但下跌结构已完成的底部 ===
+        # 背驰检测没有产生一买 → 但如果有中枢+离开笔的结构，最低点仍应定位为一买
+        has_buy1 = any(p.type == BuySellType.BUY1 for p in self.buy_sell_points)
+        if not has_buy1 and self.zhong_shus:
+            down_zs = [zs for zs in self.zhong_shus if zs.direction == Direction.DOWN]
+            for zs in down_zs:
+                if zs.end_bi_index >= len(self.bis) - 1:
+                    continue
+                # 中枢后的向下离开笔
+                exit_bis = [
+                    b for i, b in enumerate(self.bis)
+                    if b.direction == Direction.DOWN and i >= zs.end_bi_index
+                ]
+                if exit_bis:
+                    lowest_exit = min(exit_bis, key=lambda x: x.low)
+                    bottom_f = lowest_exit.end_fractal
+                    if bottom_f.price < zs.low:
+                        self.buy_sell_points.append(BuySellPoint(
+                            BuySellType.BUY1, bottom_f.timestamp,
+                            bottom_f.price, bottom_f.index, level=level
+                        ))
+                        break
+
+        # === 小转大一卖：无背驰但上涨结构已完成的顶部 ===
+        has_sell1 = any(p.type == BuySellType.SELL1 for p in self.buy_sell_points)
+        if not has_sell1 and self.zhong_shus:
+            up_zs = [zs for zs in self.zhong_shus if zs.direction == Direction.UP]
+            for zs in up_zs:
+                if zs.end_bi_index >= len(self.bis) - 1:
+                    continue
+                exit_bis = [
+                    b for i, b in enumerate(self.bis)
+                    if b.direction == Direction.UP and i >= zs.end_bi_index
+                ]
+                if exit_bis:
+                    highest_exit = max(exit_bis, key=lambda x: x.high)
+                    top_f = highest_exit.end_fractal
+                    if top_f.price > zs.high:
+                        self.buy_sell_points.append(BuySellPoint(
+                            BuySellType.SELL1, top_f.timestamp,
+                            top_f.price, top_f.index, level=level
+                        ))
+                        break
+
+        # === 一买/一卖重定位：后续走势出现更极值位置则前移，而非删除 ===
+        # 一买是下跌趋势结束的最低点——如果后续出现了更低的底分型，
+        # 无论是否形成新笔、是否有背驰，一买都应重定位到那个新低点（小转大等走势）
+        # 同理，一卖应重定位到后续更高的顶分型
+        bottoms = [f for f in self.fractals if f.type == FractalType.BOTTOM]
+        tops = [f for f in self.fractals if f.type == FractalType.TOP]
+
+        for p in self.buy_sell_points:
+            if p.type == BuySellType.BUY1:
+                later_bottoms = [f for f in bottoms if f.index > p.index]
+                if later_bottoms:
+                    lowest = min(later_bottoms, key=lambda x: x.price)
+                    if lowest.price < p.price - 0.001:
+                        # 重定位到新低点
+                        p.index = lowest.index
+                        p.price = lowest.price
+                        p.timestamp = lowest.timestamp
+
+            elif p.type == BuySellType.SELL1:
+                later_tops = [f for f in tops if f.index > p.index]
+                if later_tops:
+                    highest = max(later_tops, key=lambda x: x.price)
+                    if highest.price > p.price + 0.001:
+                        p.index = highest.index
+                        p.price = highest.price
+                        p.timestamp = highest.timestamp
+
+        # 获取重定位后的一买/一卖位置
         buy1_indices = {
             p.index for p in self.buy_sell_points if p.type == BuySellType.BUY1
         }
@@ -495,12 +570,49 @@ class ChanlunCore:
                         break
                 break
 
-        # === 有效性验证：后续走势破坏了买卖点则剔除 ===
-        valid_points = []
+        # === 类二买：两中枢之间的连接笔底分型 ===
+        # 定义：上涨中枢→向下连接笔→底分型(类二买)→向上离开→第二个上涨中枢
+        # 买点：连接中枢的向下笔结束时形成的底分型
+        for zs in self.zhong_shus:
+            if zs.direction != Direction.UP:
+                continue
+            # 中枢结束位置（用笔索引估算分型位置）
+            zs_end_idx = zs.end_bi_index * 2 + 2
+            # 找中枢后的向下笔（连接笔）
+            for down_bi in self.bis:
+                if down_bi.direction != Direction.DOWN:
+                    continue
+                if down_bi.start_fractal.index < zs_end_idx:
+                    continue
+                # 向下笔结束的底分型 = 类二买
+                bottom_f = down_bi.end_fractal
+                # 条件：向下笔不能跌破中枢下沿太深（最好在中枢范围内）
+                if bottom_f.price < zs.low * 0.98:
+                    continue  # 跌破中枢下沿太深，不是类二买
+                # 条件：向下笔之后要有向上笔确认（即将形成第二中枢）
+                has_up_after = any(
+                    b.direction == Direction.UP and
+                    b.start_fractal.index > down_bi.end_fractal.index
+                    for b in self.bis
+                )
+                if not has_up_after:
+                    continue
+                self.buy_sell_points.append(BuySellPoint(
+                    BuySellType.SECONDARY_BUY, bottom_f.timestamp,
+                    bottom_f.price, bottom_f.index, level=level
+                ))
+                break
+
+        # === 有效性验证：派生买卖点被后续走势破坏则剔除 ===
+        # 一买/一卖已在前面做了重定位（前移到最低/最高点），此处不再处理
+        valid_points = [p for p in self.buy_sell_points
+                       if p.type in (BuySellType.BUY1, BuySellType.SELL1)]
         bottoms = [f for f in self.fractals if f.type == FractalType.BOTTOM]
         tops = [f for f in self.fractals if f.type == FractalType.TOP]
-        
+
         for p in self.buy_sell_points:
+            if p.type in (BuySellType.BUY1, BuySellType.SELL1):
+                continue  # 已由重定位处理
             if 'buy' in p.type.value:
                 # 检查后续是否有更低的底分型（买点被打穿）
                 later_lows = [f.price for f in bottoms if f.index > p.index]
@@ -515,7 +627,7 @@ class ChanlunCore:
                 valid_points.append(p)
             else:
                 valid_points.append(p)
-        
+
         self.buy_sell_points = valid_points
         return self.buy_sell_points
 

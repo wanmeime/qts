@@ -155,61 +155,53 @@ def api_kline():
     qmt_code = _ensure_qmt_code(code)
 
     try:
-        print(f"[kline] 请求: {code} period={period} count={count}")
+        print(f"[kline] 请求: {code} period={period} count={count} qmt_code={qmt_code}")
         
-        # 用 get_market_data_ex 获取前复权K线
-        data = get_market_data_ex(
+        from xtquant.xtdata import get_market_data, download_history_data
+        
+        # 先下载历史数据
+        print(f"[kline] 下载历史数据...")
+        download_history_data(stock_code=qmt_code, period=period)
+        
+        # 获取K线数据
+        print(f"[kline] 调用 get_market_data...")
+        data = get_market_data(
             field_list=[],
             stock_list=[qmt_code],
             period=period,
             count=count,
-            dividend_type="front",
+            dividend_type='front',
         )
+        print(f"[kline] get_market_data 返回 keys={list(data.keys()) if data else 'None'}")
         
-        if qmt_code in data and len(data[qmt_code]) > 0:
-            df = data[qmt_code]
-            records = []
-            for idx in range(len(df)):
-                row = {}
-                for col in df.columns:
-                    val = df[col].iloc[idx]
-                    if isinstance(val, (float, int)):
-                        row[col] = int(val) if col in ('volume','amount') else round(float(val), 4)
-                    else:
-                        row[col] = str(val)
-                row['time'] = str(df.index[idx])
-                records.append(row)
-            print(f"[kline] 返回 {qmt_code}: {len(records)}条")
-            return jsonify({"code": qmt_code, "period": period, "count": len(records), "data": records})
-        else:
-            print(f"[kline] get_market_data_ex 为空, 尝试 get_market_data...")
-            try:
-                from xtquant.xtdata import get_market_data
-                data2 = get_market_data(
-                    field_list=[],
-                    stock_list=[qmt_code],
-                    period=period,
-                    count=count,
-                    dividend_type='front',
-                )
-                if qmt_code in data2 and len(data2[qmt_code]) > 0:
-                    df2 = data2[qmt_code]
-                    records2 = []
-                    for idx in range(len(df2)):
-                        row2 = {}
-                        for col in df2.columns:
-                            val = df2[col].iloc[idx]
-                            row2[col] = int(val) if col in ('volume','amount') else round(float(val), 4)
-                        row2['time'] = str(df2.index[idx])
-                        records2.append(row2)
-                    print(f"[kline] get_market_data 返回 {len(records2)}条")
-                    return jsonify({"code": qmt_code, "period": period, "count": len(records2), "data": records2})
-            except Exception as e2:
-                print(f"[kline] get_market_data 失败: {e2}")
-            
-            return jsonify({"code": qmt_code, "count": 0, "data": [], "period": period}), 200
+        # get_market_data返回格式: {field_name: DataFrame(index=stock_code)}
+        # 需要转换为按时间索引的格式
+        if 'close' in data and hasattr(data['close'], 'empty') and not data['close'].empty:
+            # 获取时间索引
+            time_df = data.get('time')
+            if time_df is not None and not time_df.empty:
+                times = time_df.columns.tolist()
+                records = []
+                for t in times:
+                    row = {
+                        'time': str(t),
+                        'open': round(float(data['open'][t].iloc[0]), 4) if t in data['open'].columns else 0,
+                        'high': round(float(data['high'][t].iloc[0]), 4) if t in data['high'].columns else 0,
+                        'low': round(float(data['low'][t].iloc[0]), 4) if t in data['low'].columns else 0,
+                        'close': round(float(data['close'][t].iloc[0]), 4) if t in data['close'].columns else 0,
+                        'volume': int(data['volume'][t].iloc[0]) if t in data['volume'].columns else 0,
+                        'amount': round(float(data['amount'][t].iloc[0]), 4) if t in data['amount'].columns else 0,
+                    }
+                    records.append(row)
+                print(f"[kline] 返回 {qmt_code}: {len(records)}条")
+                return jsonify({"code": qmt_code, "period": period, "count": len(records), "data": records})
+        
+        print(f"[kline] 无数据")
+        return jsonify({"code": qmt_code, "count": 0, "data": [], "period": period}), 200
     except Exception as e:
         print(f"[kline] 异常: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 

@@ -88,6 +88,8 @@ notification:
   dedup_window_seconds: 300
   # 单次最多推送股票数
   max_stocks_per_alert: 10
+  # 飞书卡片按钮回调地址（dashboard 面板地址）
+  callback_host: "http://172.31.153.75:8891"
 
 # 状态存储
 storage:
@@ -95,3 +97,12 @@ storage:
   db_path: "/home/jiaod/qts/50-盯盘/watchdog.db"
   # 保留天数
   retention_days: 30
+
+# 信号监测系统
+signal_monitor:
+  # 是否启用信号监测
+  enabled: true
+  # 实时行情轮询间隔 (秒)
+  tick_interval: 5.0
+  # 15分钟背驰段检查间隔 (秒)
+  divergence_check_interval: 60.0

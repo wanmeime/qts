@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-拉取全A股2年K线数据（腾讯源）+ 行业分类（同花顺）
+拉取自选股2年K线数据（腾讯源）
 输出：qts/00-研究/数据源/缓存/kline_2y/
 """
 import urllib3.util.connection as uc
@@ -10,35 +10,44 @@ uc.allowed_gai_family = _allowed_gai_family
 
 import os
 import time
-import csv
+import json
 import pandas as pd
 import akshare as ak
 
 CACHE_DIR = "/home/jiaod/qts/00-研究/数据源/缓存/kline_2y"
 os.makedirs(CACHE_DIR, exist_ok=True)
 
-# === 1. 拉取全市场股票列表 ===
-print("📊 读取A股列表...")
-stocks = []
-with open("/home/jiaod/qts/00-研究/数据源/缓存/A股全市场行情.csv", encoding="utf-8-sig") as f:
-    reader = csv.DictReader(f)
-    for row in reader:
-        code = row.get("代码", "")
-        name = row.get("名称", "")
-        if "ST" in name or "退" in name:
-            continue
-        if code.startswith("sh") or code.startswith("sz") or code.startswith("bj"):
-            stocks.append((code, name))
+# === 1. 加载自选股列表 ===
+print("📊 读取自选股列表...")
+with open("/home/jiaod/qts/00-研究/自选股/watchlist.json", encoding="utf-8") as f:
+    watchlist = json.load(f)
 
-print(f"股票池：{len(stocks)} 只（排除ST/退市）")
+stocks = []
+for item in watchlist:
+    code = item.get("code", "").strip()
+    market = item.get("market", "")
+    name = item.get("name", code)
+    # 只保留A股，排除指数
+    if not code or market == "美股" or code.startswith(("399", "880")):
+        continue
+    # 补齐前缀
+    if code.startswith(("6", "9")):
+        full_code = f"sh{code}"
+    elif code.startswith(("0", "3")):
+        full_code = f"sz{code}"
+    else:
+        full_code = code
+    stocks.append((full_code, name))
+
+print(f"自选股池：{len(stocks)} 只A股")
 
 # === 2. 检查已完成 ===
 done = set(f.replace(".csv", "") for f in os.listdir(CACHE_DIR) if f.endswith(".csv"))
 remaining = [(c, n) for c, n in stocks if c not in done]
 print(f"已完成：{len(done)} | 待拉取：{len(remaining)}")
-print(f"预计时间：{len(remaining) * 0.6 / 60:.0f} 分钟")
+print(f"预计时间：{len(remaining) * 0.6 / 60:.1f} 分钟")
 
-# === 3. 拉取K线（腾讯源）===
+# === 3. 拉取K线（腾讯源，2年数据）===
 print("\n🚀 开始拉取K线数据...\n")
 success = 0
 fail = 0
@@ -55,29 +64,23 @@ for i, (code, name) in enumerate(remaining):
         if df is not None and len(df) > 0:
             df.to_csv(f"{CACHE_DIR}/{code}.csv", index=False)
             success += 1
+            print(f"  ✅ {code} ({name}) - {len(df)}条数据")
         else:
             fail += 1
+            print(f"  ❌ {code} ({name}) - 无数据")
     except Exception as e:
         fail += 1
+        print(f"  ❌ {code} ({name}) - 错误: {e}")
     
-    if (i + 1) % 50 == 0 or i == len(remaining) - 1:
+    if (i + 1) % 10 == 0 or i == len(remaining) - 1:
         elapsed = time.time() - start_time
-        rate = (i + 1) / elapsed
-        eta = (len(remaining) - i - 1) / rate
-        print(f"  [{i+1}/{len(remaining)}] 成功:{success} 失败:{fail} | 速率:{rate:.1f}/秒 | 剩余:{eta/60:.0f}分钟")
+        rate = (i + 1) / elapsed if elapsed > 0 else 0
+        eta = (len(remaining) - i - 1) / rate if rate > 0 else 0
+        print(f"\n  [{i+1}/{len(remaining)}] 成功:{success} 失败:{fail} | 速率:{rate:.1f}/秒 | 剩余:{eta/60:.1f}分钟\n")
     
     time.sleep(0.3)
 
-# === 4. 拉取行业分类 ===
-print("\n📊 拉取同花顺行业分类...")
-try:
-    industries = ak.stock_board_industry_name_ths()
-    industries.to_csv(f"/home/jiaod/qts/00-研究/数据源/缓存/ths_行业板块.csv", index=False)
-    print(f"  ✅ {len(industries)} 个行业板块")
-except Exception as e:
-    print(f"  ❌ 失败: {e}")
-
-# === 5. 汇总 ===
+# === 4. 汇总 ===
 elapsed = time.time() - start_time
 total_size = sum(os.path.getsize(os.path.join(CACHE_DIR, f)) for f in os.listdir(CACHE_DIR) if f.endswith(".csv"))
 print(f"\n✅ 全部完成！")

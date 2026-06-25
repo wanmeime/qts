@@ -312,6 +312,77 @@ def add_position(
         return JSONResponse(status_code=500, content={"ok": False, "message": str(e)})
 
 
+@app.post("/api/position/remove/{code}")
+def remove_position(code: str):
+    """移除持仓（供飞书卡片按钮调用）"""
+    try:
+        if not POSITION_FILE.exists():
+            return {"success": False, "error": "持仓文件不存在"}
+
+        with open(POSITION_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        detail = data.get("持仓明细", [])
+        removed = [p for p in detail if p.get("股票代码") == code]
+        data["持仓明细"] = [p for p in detail if p.get("股票代码") != code]
+
+        # 更新汇总
+        data["持仓汇总"]["持仓股数"] = sum(p.get("持股数量", 0) for p in data["持仓明细"])
+        total_value = sum(
+            p.get("持股数量", 0) * p.get("当前价", p.get("成本价", 0))
+            for p in data["持仓明细"]
+        )
+        data["持仓汇总"]["总市值"] = total_value
+        data["持仓汇总"]["持仓比例%"] = round(total_value / data["持仓汇总"].get("总资产", 1) * 100, 2) if data["持仓汇总"].get("总资产") else 0
+        data["更新时间"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        with open(POSITION_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+        if removed:
+            logger.info(f"持仓已移除: {code} {removed[0].get('名称', '')}")
+            return {"success": True, "code": code, "name": removed[0].get("名称", "")}
+        else:
+            return {"success": False, "error": f"未找到持仓: {code}"}
+
+    except Exception as e:
+        logger.error(f"移除持仓失败: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/signals")
+def get_signals(
+    status: str = "pending",
+    signal_type: str = "",
+):
+    """获取当前信号模板（供 Dashboard 展示）"""
+    try:
+        from state_store import StateStore
+        store = StateStore()
+
+        records = store.load_signal_templates(
+            signal_type=signal_type if signal_type else None,
+            status=status,
+        )
+
+        # 按类型分组
+        grouped = {}
+        for r in records:
+            t = r["signal_type"]
+            if t not in grouped:
+                grouped[t] = []
+            grouped[t].append(r)
+
+        return {
+            "total": len(records),
+            "grouped": grouped,
+            "update_time": datetime.now().strftime("%H:%M:%S"),
+        }
+    except Exception as e:
+        logger.error(f"获取信号失败: {e}")
+        return {"total": 0, "grouped": {}, "error": str(e)}
+
+
 @app.get("/api/notifications")
 def get_notifications():
     """获取最近报警通知（供 Dashboard 轮询）"""
