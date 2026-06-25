@@ -582,7 +582,10 @@ class SignalMonitor:
         # 自动交易
         if self._auto_trade_enabled:
             try:
-                self._try_auto_buy(result)
+                if result.action in ("buy",):
+                    self._try_auto_buy(result)
+                elif result.action in ("sell", "stop_loss"):
+                    self._try_auto_sell(result)
             except Exception as e:
                 logger.error(f"自动交易异常: {e}")
 
@@ -684,6 +687,95 @@ class SignalMonitor:
             logger.error(f"自动买入失败: 无法连接 QMT Bridge ({qmt_host})")
         except Exception as e:
             logger.error(f"自动买入异常: {e}")
+
+    # ============================================================
+    # 自动卖出（止损/止盈/顶分型信号）
+    # ============================================================
+
+    def _try_auto_sell(self, result: SignalMatchResult):
+        """信号触发时自动卖出模拟盘"""
+        code = result.stock_code
+        price = result.price
+        if price <= 0:
+            logger.warning(f"自动卖出跳过: {code} 当前价无效 {price}")
+            return
+
+        # 获取配置中的止盈规则
+        cfg = self._auto_trade_config
+        strategy_cfg = None
+        try:
+            sys.path.insert(0, str(PROJECT_ROOT / "10-策略" / "缠论Agent"))
+            from strategy_config import TAKEPROFIT_PCT
+            strategy_cfg = {"takeprofit_pct": TAKEPROFIT_PCT}
+        except Exception:
+            strategy_cfg = {"takeprofit_pct": 0.3}
+
+        # 发送卖出请求
+        qmt_host = self._qmt_host
+        if not qmt_host:
+            logger.warning("自动卖出跳过: QMT host 未配置")
+            return
+
+        try:
+            # 先查持仓确定可卖数量
+            resp = requests.get(f"{qmt_host}/api/trade/positions", timeout=5)
+            pos_data = resp.json()
+            positions = pos_data.get("positions", []) if pos_data.get("success") else []
+
+            pos = None
+            for p in positions:
+                p_code = p.get("code", "").replace(".SH", "").replace(".SZ", "")
+                if p_code == code:
+                    pos = p
+                    break
+
+            if not pos:
+                logger.info(f"自动卖出跳过: {code} 无持仓")
+                return
+
+            total_vol = pos.get("volume", 0)
+            available = pos.get("available", 0)
+            cost = pos.get("cost", 0)
+
+            if total_vol <= 0:
+                return
+
+            # 决定卖出数量
+            if result.action == "stop_loss":
+                # 止损：全仓卖出
+                sell_vol = total_vol
+                reason = "止损"
+            elif result.label and "sell" in result.label:
+                # 一卖/二卖信号：全仓卖出
+                sell_vol = total_vol
+                reason = f"{result.label}信号"
+            elif result.action == "sell":
+                # 其他卖出信号（如顶分型跌破）：全仓卖出
+                sell_vol = total_vol
+                reason = "顶分型跌破"
+            else:
+                # 默认不做操作
+                return
+
+            if sell_vol <= 0:
+                logger.warning(f"自动卖出跳过: {code} 可卖数量为0")
+                return
+
+            # 调用卖出接口
+            resp = requests.post(
+                f"{qmt_host}/api/trade/sell",
+                json={"code": code, "price": round(price, 2), "volume": sell_vol},
+                timeout=5,
+            )
+            result_data = resp.json()
+            if result_data.get("success"):
+                logger.info(f"✅ 自动卖出成功: {code} {sell_vol}股 @ {price} ({reason})")
+            else:
+                logger.warning(f"❌ 自动卖出失败: {code} → {result_data.get('error', '未知')}")
+        except requests.exceptions.ConnectionError:
+            logger.error(f"自动卖出失败: 无法连接 QMT Bridge ({qmt_host})")
+        except Exception as e:
+            logger.error(f"自动卖出异常: {e}")
 
     # ============================================================
     # 实时底分型检测（盘中直接发现新买点）
