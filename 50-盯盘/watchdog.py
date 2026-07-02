@@ -31,6 +31,7 @@ sys.path.insert(0, str(current_dir))
 
 # 添加策略模块路径
 sys.path.insert(0, str(Path(__file__).parent.parent / "10-策略" / "自选股监控"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "10-策略" / "缠论Agent"))
 
 from realtime_fetcher import RealtimeFetcher, QmtFetcher, is_trading_hours, get_market_status
 from state_store import StateStore
@@ -40,13 +41,16 @@ from notifier import Notifier
 from signal_templates import SignalStatus, BuySellLabel
 from signal_monitor import SignalMonitor
 
+# 缠论知识库（Qdrant）
+try:
+    from knowledge_base import ChanlunKnowledgeBase
+except ImportError:
+    ChanlunKnowledgeBase = None
+
 # 旧缠论分析模块（缠论分析.py/signal_generator.py）已于 2026-06-24 移除
 # 实时分析请使用 static_analyzer.py + signal_monitor.py
 HAS_CHANLUN = True  # chanlun_core 始终可用
-
-# 多级别分析模块（旧分析路径，已废弃 — 由 signal_monitor 替代）
-HAS_MULTI_LEVEL = False
-ChanlunKnowledgeBase = None
+HAS_MULTI_LEVEL = False  # 多级别联立分析暂未启用
 
 try:
     import yaml
@@ -377,6 +381,7 @@ class Watchdog:
                 state_store=self.store,
                 chanlun_service=self.chanlun_service,
                 notifier=self.notifier,
+                fetcher=self.fetcher,  # 复用 QMT 数据源，不重新创建 RealtimeFetcher
                 on_signal=on_signal_result,
                 tick_interval=self.config.get("signal_monitor", {}).get("tick_interval", 5.0),
                 divergence_check_interval=self.config.get("signal_monitor", {}).get(

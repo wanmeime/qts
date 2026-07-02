@@ -24,17 +24,19 @@ class RealtimeFetcher:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         })
 
-    def fetch_batch(self, codes: List[str], source: str = "eastmoney") -> Dict[str, Dict]:
+    def fetch_batch(self, codes, source: str = "eastmoney") -> Dict[str, Dict]:
         """
         批量获取实时行情。
 
         Args:
-            codes: 股票代码列表，如 ["600519", "000858"]
+            codes: 股票代码列表或元组，如 ["600519", "000858"]
             source: 数据源 (eastmoney/sina/tencent)
 
         Returns:
             {code: {name, price, change_pct, open, high, low, volume, amount, ...}}
         """
+        if isinstance(codes, tuple):
+            codes = list(codes)
         fetchers = {
             "eastmoney": self._fetch_eastmoney,
             "sina": self._fetch_sina,
@@ -119,8 +121,10 @@ class RealtimeFetcher:
 
         return result
 
-    def _fetch_eastmoney(self, codes: List[str]) -> Dict[str, Dict]:
+    def _fetch_eastmoney(self, codes) -> Dict[str, Dict]:
         """东方财富实时行情"""
+        if isinstance(codes, tuple):
+            codes = list(codes)
         result = {}
 
         # 构建筛选条件
@@ -166,8 +170,10 @@ class RealtimeFetcher:
 
         return result
 
-    def _fetch_sina(self, codes: List[str]) -> Dict[str, Dict]:
+    def _fetch_sina(self, codes) -> Dict[str, Dict]:
         """新浪实时行情"""
+        if isinstance(codes, tuple):
+            codes = list(codes)
         result = {}
 
         # 转换代码格式
@@ -294,12 +300,12 @@ class QmtFetcher:
         self.base_url = QMT_BRIDGE_HOST
         self._code_cache = {}  # 缓存股票名称
 
-    def fetch_batch(self, codes: List[str], source: str = "") -> Dict[str, Dict]:
+    def fetch_batch(self, codes, source: str = "") -> Dict[str, Dict]:
         """
-        批量获取实时行情（通过 QMT）
+        批量获取实时行情（通过 QMT），大列表自动分片（每片 1000 只）
 
         Args:
-            codes: 股票代码列表，如 ["300450", "000001"]
+            codes: 股票代码列表或元组，如 ["300450", "000001"]
             source: 忽略（兼容接口）
 
         Returns:
@@ -307,48 +313,57 @@ class QmtFetcher:
         """
         if not codes:
             return {}
+        if isinstance(codes, tuple):
+            codes = list(codes)
 
         # 转为 QMT 格式 (300450.SZ / 000001.SH)
         qmt_codes = []
         code_map = {}  # qmt_code -> original_code
         for c in codes:
-            if c.startswith("6") or c.startswith("9"):
-                qc = f"{c}.SH"
+            if "." in c:
+                bare = c.split(".")[0]
             else:
-                qc = f"{c}.SZ"
+                bare = c
+            if bare.startswith(("6", "9")):
+                qc = f"{bare}.SH"
+            else:
+                qc = f"{bare}.SZ"
             qmt_codes.append(qc)
-            code_map[qc] = c
+            code_map[qc] = bare
 
-        try:
-            url = f"{self.base_url}/api/quotes/batch"
-            resp = self.session.get(url, params={"codes": ",".join(qmt_codes)},
-                                    timeout=self.timeout)
-            resp.raise_for_status()
-            data = resp.json()
-
-            result = {}
-            for qc, d in data.items():
-                orig_code = code_map.get(qc, qc.replace(".SH", "").replace(".SZ", ""))
-                result[orig_code] = {
-                    "code": orig_code,
-                    "name": qc.replace(".SH", "").replace(".SZ", ""),
-                    "price": d.get("price", 0),
-                    "change_pct": d.get("change_pct", 0),
-                    "open": d.get("open", 0),
-                    "high": d.get("high", 0),
-                    "low": d.get("low", 0),
-                    "volume": d.get("volume", 0),
-                    "amount": d.get("amount", 0),
-                    "prev_close": d.get("lastClose", 0),
-                    "source": "qmt",
-                }
-            return result
-        except requests.ConnectionError:
-            logger.warning("QMT 桥接服务不可达，请确认 MiniQMT 已登录且转发服务已启动")
-            return {}
-        except Exception as e:
-            logger.warning(f"QMT 获取行情失败: {e}")
-            return {}
+        # 分片：每片最多 1000 只，避免 URL 过长
+        chunk_size = 1000
+        all_results = {}
+        for i in range(0, len(qmt_codes), chunk_size):
+            chunk = qmt_codes[i:i + chunk_size]
+            try:
+                url = f"{self.base_url}/api/quotes/batch"
+                resp = self.session.get(url, params={"codes": ",".join(chunk)},
+                                        timeout=self.timeout)
+                resp.raise_for_status()
+                data = resp.json()
+                for qc, d in data.items():
+                    orig_code = code_map.get(qc, qc.replace(".SH", "").replace(".SZ", ""))
+                    all_results[orig_code] = {
+                        "code": orig_code,
+                        "name": d.get("name", orig_code),
+                        "price": d.get("price", 0),
+                        "change_pct": d.get("change_pct", 0),
+                        "open": d.get("open", 0),
+                        "high": d.get("high", 0),
+                        "low": d.get("low", 0),
+                        "volume": d.get("volume", 0),
+                        "amount": d.get("amount", 0),
+                        "prev_close": d.get("lastClose", 0),
+                        "source": "qmt",
+                    }
+            except requests.ConnectionError:
+                logger.warning("QMT 桥接服务不可达")
+                return all_results if all_results else {}
+            except Exception as e:
+                logger.warning(f"QMT 获取行情分片 {i//chunk_size} 失败: {e}")
+                continue
+        return all_results
 
     def fetch_indices(self, index_codes: Optional[Dict[str, str]] = None) -> Dict[str, Dict]:
         """

@@ -408,6 +408,134 @@ def get_notifications():
         }
 
 
+# ============================================================
+# 信号生命周期管理 API
+# ============================================================
+
+@app.api_route("/api/signal/acknowledge/{signal_id}", methods=["GET", "POST"])
+def acknowledge_signal(request: Request, signal_id: int, notes: str = ""):
+    """确认已收到信号通知。GET(飞书按钮)=HTML自动关闭, POST(API)=JSON"""
+    try:
+        from state_store import StateStore
+        store = StateStore()
+        ok = store.acknowledge_signal(signal_id, notes=notes)
+
+        # POST -> JSON
+        if request.method == "POST":
+            if ok:
+                return {"success": True, "message": f"信号 {signal_id} 已确认"}
+            else:
+                return JSONResponse(status_code=404,
+                    content={"success": False, "error": f"信号 {signal_id} 未找到或状态不允许确认"})
+
+        # GET(飞书按钮) -> 自动关闭的HTML页面
+        if ok:
+            logger.info(f"信号确认: ID={signal_id}")
+            html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>确认成功</title>'
+            html += '<style>*{margin:0;padding:0;}body{font-family:sans-serif;text-align:center;padding:60px 20px;background:#f5f5f5;}'
+            html += '.card{background:#fff;border-radius:12px;padding:40px;max-width:400px;margin:0 auto;box-shadow:0 2px 12px rgba(0,0,0,0.1);}'
+            html += '.icon{font-size:64px;}h2{color:#333;margin:16px 0 8px;}p{color:#666;}</style></head><body>'
+            html += f'<div class="card"><div class="icon">\U00002705</div><h2>\u4fe1\u53f7\u5df2\u786e\u8ba4</h2>'
+            html += f'<p>\u4fe1\u53f7 #{signal_id} \u5df2\u6807\u8bb0\u4e3a\u300c\u5df2\u6536\u5230\u300d\uff0c\u4e0d\u518d\u91cd\u590d\u901a\u77e5\u3002</p>'
+            html += '<p style="font-size:12px;color:#999;">\u6b64\u9875\u9762\u5c06\u81ea\u52a8\u5173\u95ed</p></div>'
+            html += '<script>setTimeout(function(){window.close();},1500);</script></body></html>'
+            return HTMLResponse(content=html)
+        else:
+            html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>\u786e\u8ba4\u5931\u8d25</title>'
+            html += '<style>body{font-family:sans-serif;text-align:center;padding:60px;}</style></head><body>'
+            html += f'<h2>\u26a0\ufe0f \u786e\u8ba4\u5931\u8d25</h2><p>\u4fe1\u53f7 #{signal_id} \u672a\u627e\u5230\u6216\u5df2\u88ab\u786e\u8ba4\u8fc7</p></body></html>'
+            return HTMLResponse(content=html, status_code=404)
+    except Exception as e:
+        logger.error(f"\u786e\u8ba4\u4fe1\u53f7\u5931\u8d25: {e}")
+        return HTMLResponse(content=f"<h2>\u786e\u8ba4\u5931\u8d25</h2><p>{e}</p>", status_code=500)
+
+
+
+@app.post("/api/signal/complete/{signal_id}")
+def complete_signal(signal_id: int, operation_notes: str = ""):
+    """
+    标记信号对应的操作已完成（如止损卖出、止盈减仓）。
+
+    状态流转: acknowledged → completed
+    完成后信号永久保留在DB中供复盘使用。
+    """
+    try:
+        from state_store import StateStore
+        store = StateStore()
+        ok = store.complete_signal(signal_id, operation_notes=operation_notes)
+        if ok:
+            logger.info(f"信号完成: ID={signal_id} notes={operation_notes}")
+            return {"success": True, "message": f"信号 {signal_id} 已完成"}
+        else:
+            return JSONResponse(
+                status_code=404,
+                content={"success": False, "error": f"信号 {signal_id} 未找到或状态不允许完成"}
+            )
+    except Exception as e:
+        logger.error(f"完成信号失败: {e}")
+        return JSONResponse(status_code=500, content={"success": False, "error": str(e)})
+
+
+@app.get("/api/signal/history")
+def get_signal_history(
+    signal_type: str = "",
+    status: str = "",
+    stock_code: str = "",
+    limit: int = 100,
+    offset: int = 0,
+):
+    """
+    获取信号历史记录（含所有状态），供复盘分析。
+
+    支持按类型、状态、股票代码筛选，按时间倒序排列。
+    """
+    try:
+        from state_store import StateStore
+        store = StateStore()
+        result = store.get_signal_history(
+            signal_type=signal_type if signal_type else None,
+            status=status if status else None,
+            stock_code=stock_code if stock_code else None,
+            limit=limit,
+            offset=offset,
+        )
+        return result
+    except Exception as e:
+        logger.error(f"获取历史信号失败: {e}")
+        return {"total": 0, "signals": [], "error": str(e)}
+
+
+@app.get("/api/signal/stats")
+def get_signal_stats():
+    """获取信号统计，用于复盘分析系统的信号识别灵敏度和准确率"""
+    try:
+        from state_store import StateStore
+        store = StateStore()
+
+        # 各状态数量
+        all_statuses = ["pending", "activated", "acknowledged", "completed", "invalidated", "expired"]
+        stats = {}
+        for s in all_statuses:
+            records = store.load_signal_templates(status=s)
+            stats[s] = len(records)
+
+        # 按信号类型统计
+        type_stats = {}
+        for t in ["bottom_fractal", "top_fractal", "divergence_zone", "position_risk"]:
+            records = store.load_signal_templates(signal_type=t)
+            type_stats[t] = len(records)
+
+        return {
+            "by_status": stats,
+            "by_type": type_stats,
+            "total": sum(stats.values()),
+            "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+    except Exception as e:
+        logger.error(f"获取信号统计失败: {e}")
+        return {"error": str(e)}
+
+
 @app.get("/", response_class=HTMLResponse)
 def dashboard_page():
     if DASHBOARD_HTML.exists():

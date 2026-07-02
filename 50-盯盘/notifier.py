@@ -32,62 +32,71 @@ class Notifier:
         return self.send_text(str(data))
 
     def send_text(self, text: str) -> bool:
-        """发送文本消息"""
-        if not self.feishu_cfg.get("enabled", True):
-            logger.info("飞书推送未启用，跳过")
-            return False
+        """发送文本消息（以交互卡片形式）"""
+        card = self._build_simple_card(text, title="盯盘通知")
+        return self.send_card(card)
 
-        cmd = [
-            LARK_CLI, "im", "+messages-send",
-            "--chat-id", self.chat_id,
-            "--text", text,
-            "--as", "bot"
-        ]
+    def _build_simple_card(self, content: str, title: str = "盯盘通知") -> dict:
+        """将 markdown 文本包装成飞书卡片"""
+        # 解析第一行作为标题
+        lines = content.strip().split("\n")
+        first_line = lines[0].replace("**", "").replace("🚨", "").replace("🟢", "").replace("🔴", "").replace("⚡", "").replace("💰", "").replace("❌", "").strip()
 
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, cwd=WORK_DIR)
-            if result.returncode == 0:
-                data = json.loads(result.stdout)
-                if data.get("ok"):
-                    logger.debug("飞书推送成功")
-                    return True
-                else:
-                    logger.warning(f"飞书推送失败: {data}")
-            else:
-                logger.warning(f"飞书推送失败: {result.stderr}")
-        except Exception as e:
-            logger.error(f"飞书推送异常: {e}")
+        # 判断通知类型和颜色
+        template = "blue"
+        if "止损" in content or "🚨" in content:
+            template = "red"
+        elif "买入" in content or "突破" in content or "🟢" in content:
+            template = "green"
+        elif "卖出" in content or "减仓" in content or "🔴" in content:
+            template = "orange"
+        elif "浮盈" in content or "💰" in content:
+            template = "yellow"
+        elif "失效" in content or "❌" in content:
+            template = "grey"
 
-        return False
+        return {
+            "config": {"wide_screen_mode": True},
+            "header": {
+                "title": {"tag": "plain_text", "content": title},
+                "template": template,
+            },
+            "elements": [
+                {"tag": "hr"},
+                {
+                    "tag": "div",
+                    "text": {
+                        "tag": "lark_md",
+                        "content": content,
+                    },
+                },
+                {"tag": "hr"},
+                {
+                    "tag": "note",
+                    "elements": [
+                        {"tag": "plain_text", "content": "QTS 盯盘系统 · 自动推送"}
+                    ],
+                },
+            ],
+        }
 
     def send_markdown(self, content: str) -> bool:
-        """发送 Markdown 消息"""
+        """发送 Markdown 消息（以交互卡片形式）"""
         if not self.feishu_cfg.get("enabled", True):
             logger.info("飞书推送未启用，跳过")
             return False
 
-        cmd = [
-            LARK_CLI, "im", "+messages-send",
-            "--chat-id", self.chat_id,
-            "--markdown", content,
-            "--as", "bot"
-        ]
+        # 提取标题：取第一段有意义的文本
+        title = "盯盘通知"
+        lines = content.strip().split("\n")
+        for line in lines:
+            cleaned = line.replace("**", "").replace("*", "").strip()
+            if cleaned and len(cleaned) > 2:
+                title = cleaned[:30]
+                break
 
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, cwd=WORK_DIR)
-            if result.returncode == 0:
-                data = json.loads(result.stdout)
-                if data.get("ok"):
-                    logger.debug("飞书 Markdown 推送成功")
-                    return True
-                else:
-                    logger.warning(f"飞书 Markdown 推送失败: {data}")
-            else:
-                logger.warning(f"飞书 Markdown 推送失败: {result.stderr}")
-        except Exception as e:
-            logger.error(f"飞书 Markdown 推送异常: {e}")
-
-        return False
+        card = self._build_simple_card(content, title=title)
+        return self.send_card(card)
 
     def send_alerts(self, message: str) -> bool:
         """发送报警消息"""

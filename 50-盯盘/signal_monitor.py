@@ -328,7 +328,7 @@ class SignalMonitor:
                 signal_type="bottom_fractal",
                 label=label,
                 action="buy",
-                message=f"底分型{label}突破！当前价 {price:.2f} ≥ third_high {third_high:.2f}",
+                message=f"{code} 底分型{label}突破！当前价 {price:.2f} ≥ third_high {third_high:.2f}",
                 price=price,
             )
 
@@ -347,7 +347,7 @@ class SignalMonitor:
                 signal_type="bottom_fractal",
                 label=label,
                 action="invalidated",
-                message=f"底分型{label}失效，跌破止损 {price:.2f} ≤ {stop_loss:.2f}",
+                message=f"{code} 底分型{label}失效，跌破止损 {price:.2f} ≤ {stop_loss:.2f}",
                 price=price,
             )
 
@@ -390,7 +390,7 @@ class SignalMonitor:
                 signal_type="top_fractal",
                 label=label,
                 action="sell",
-                message=f"顶分型{label}确认！当前价 {price:.2f} ≤ third_low {third_low:.2f}",
+                message=f"{code} 顶分型{label}确认！当前价 {price:.2f} ≤ third_low {third_low:.2f}",
                 price=price,
             )
 
@@ -408,7 +408,7 @@ class SignalMonitor:
                 signal_type="top_fractal",
                 label=label,
                 action="invalidated",
-                message=f"顶分型{label}失效，涨破止损 {price:.2f} ≥ {stop_loss:.2f}",
+                message=f"{code} 顶分型{label}失效，涨破止损 {price:.2f} ≥ {stop_loss:.2f}",
                 price=price,
             )
 
@@ -442,18 +442,30 @@ class SignalMonitor:
 
         profit_pct = (price - cost) / cost * 100
 
-        # 止损
+        # 止损 → 重复通知（5分钟间隔）直到用户点"已收到"
         if stop_loss and price <= stop_loss:
+            # 查DB看用户是否已确认
+            db_records = self.state_store.load_signal_templates(signal_type="position_risk", stock_code=code)
+            for r in db_records:
+                if r["id"] == rec["id"] and r["status"] in ("acknowledged", "completed"):
+                    self._remove_signal_from_cache("position_risk", rec["id"])
+                    return None
+
+            # 去重：5分钟内不重复发
+            if self.state_store.was_alerted(code, "stop_loss", 300):
+                return None
+
             self.state_store.update_signal_status(rec["id"], "activated", {
                 "triggered_at": datetime.now(_CST).strftime("%Y-%m-%d %H:%M:%S"),
                 "triggered_price": price,
             })
+            self.state_store.record_alert(code, "stop_loss", f"止损{stop_loss}", price)
             return SignalMatchResult(
                 signal_id=rec["id"], stock_code=code,
                 stock_name=data.get("stock_name", code),
                 signal_type="position_risk", label=None,
                 action="stop_loss",
-                message=f"🚨 止损！{data.get('stock_name', code)} 现价 {price:.2f}，跌破止损 {stop_loss:.2f}，盈亏 {profit_pct:.1f}%",
+                message=f"🚨 止损！{code} {data.get('stock_name', code)} 现价 {price:.2f}，跌破止损 {stop_loss:.2f}，盈亏 {profit_pct:.1f}%\n\n该信号将每5分钟重复提醒。\n确认已收到，请回复: 确认 {rec['id']}",
                 price=price,
             )
 
@@ -469,30 +481,35 @@ class SignalMonitor:
                 stock_name=data.get("stock_name", code),
                 signal_type="position_risk", label=None,
                 action="take_profit",
-                message=f"💰 浮盈{profit_pct:.1f}%！{data.get('stock_name', code)} 现价 {price:.2f}，考虑减仓",
+                message=f"💰 浮盈{profit_pct:.1f}%！{code} {data.get('stock_name', code)} 现价 {price:.2f}，考虑减仓",
                 price=price,
             )
 
-        # ±3%波动报警（不改变信号状态，仅通知）
+        # ±3%波动报警（去重，5分钟内不重复发）
+        alert_code = f"alert_{code}"
         if alert_up and price >= alert_up:
-            return SignalMatchResult(
-                signal_id=rec["id"], stock_code=code,
-                stock_name=data.get("stock_name", code),
-                signal_type="position_risk", label=None,
-                action="alert",
-                message=f"⚡ {data.get('stock_name', code)} 上涨 {profit_pct:.1f}%，现价 {price:.2f}",
-                price=price,
-            )
+            if not self.state_store.was_alerted(code, "alert_up", 300):
+                self.state_store.record_alert(code, "alert_up", f"上涨{alert_up}", price)
+                return SignalMatchResult(
+                    signal_id=rec["id"], stock_code=code,
+                    stock_name=data.get("stock_name", code),
+                    signal_type="position_risk", label=None,
+                    action="alert",
+                    message=f"⚡ {code} {data.get('stock_name', code)} 上涨 {profit_pct:.1f}%，现价 {price:.2f}",
+                    price=price,
+                )
 
         if alert_down and price <= alert_down:
-            return SignalMatchResult(
-                signal_id=rec["id"], stock_code=code,
-                stock_name=data.get("stock_name", code),
-                signal_type="position_risk", label=None,
-                action="alert",
-                message=f"⚡ {data.get('stock_name', code)} 下跌 {profit_pct:.1f}%，现价 {price:.2f}",
-                price=price,
-            )
+            if not self.state_store.was_alerted(code, "alert_down", 300):
+                self.state_store.record_alert(code, "alert_down", f"下跌{alert_down}", price)
+                return SignalMatchResult(
+                    signal_id=rec["id"], stock_code=code,
+                    stock_name=data.get("stock_name", code),
+                    signal_type="position_risk", label=None,
+                    action="alert",
+                    message=f"⚡ {code} {data.get('stock_name', code)} 下跌 {profit_pct:.1f}%，现价 {price:.2f}",
+                    price=price,
+                )
 
         return None
 
@@ -530,6 +547,40 @@ class SignalMonitor:
     # ============================================================
     # 工具方法
     # ============================================================
+
+    _FULL_MARKET_CACHE: List[str] = []  # 全市场代码缓存（启动时加载一次）
+
+    @classmethod
+    def _get_market_codes(cls) -> List[str]:
+        """从 QMT 获取全市场 A 股实际列表（已剔除科创板），缓存到类变量"""
+        if cls._FULL_MARKET_CACHE:
+            return cls._FULL_MARKET_CACHE
+        codes = []
+        try:
+            import urllib.request as _ureq
+            import json as _json
+            resp = _ureq.urlopen("http://172.31.144.1:8890/api/stocks/list", timeout=15)
+            data = _json.loads(resp.read())
+            raw = data.get("stocks", [])
+            # 再次过滤确保无科创板
+            codes = [c for c in raw if not c.startswith("688")]
+            logger.info(f"全市场A股: QMT返回{data.get('count',0)}只, 实际取{len(codes)}只")
+        except Exception as e:
+            logger.warning(f"从QMT获取股票列表失败: {e}")
+        if not codes:
+            # 备用号段（实际用到的概率极低）
+            for prefix in ['600', '601', '603', '605']:
+                for suffix in range(1, 1000):
+                    codes.append(f'{prefix}{suffix:03d}.SH')
+            for prefix in ['000', '001', '002']:
+                for suffix in range(1, 1000):
+                    codes.append(f'{prefix}{suffix:03d}.SZ')
+            for prefix in ['300', '301']:
+                for suffix in range(1, 1000):
+                    codes.append(f'{prefix}{suffix:03d}.SZ')
+            logger.warning(f"全市场代码: 回退号段 {len(codes)} 只")
+        cls._FULL_MARKET_CACHE = codes
+        return codes
 
     def _get_all_codes(self) -> List[str]:
         """获取所有信号涉及的股票代码"""
@@ -804,26 +855,13 @@ class SignalMonitor:
         import urllib.request as _ureq
         import json as _json
 
-        # 获取所有监控代码（持仓+自选），不从模板取
-        codes = set()
-        # 从信号模板
-        for sig_type, records in self._signals.items():
-            for rec in records:
-                codes.add(rec["stock_code"])
-        # 从持仓
-        codes.update(self._position_codes)
-        # 补充自选股（无论是否有持仓）
-        try:
-            wl_path = PROJECT_ROOT / "00-研究" / "自选股" / "watchlist.json"
-            if wl_path.exists():
-                with open(wl_path) as f:
-                    wl = _json.load(f)
-                for item in wl:
-                    c = item.get("code", "").strip()
-                    if c: codes.add(c)
-        except Exception:
-            pass
-        codes = list(codes)
+        # 全市场扫描（剔除科创板），不从自选股列表读取
+        codes = self._get_market_codes()
+        # 补充持仓（确保持仓股总在监控中，即使退市风险等极端情况）
+        pos_codes = list(self._position_codes)
+        for c in pos_codes:
+            if c not in codes:
+                codes.append(c)
         if not codes:
             return
 
@@ -831,50 +869,70 @@ class SignalMonitor:
         quotes = self._fetch_real_time(codes)
         now = time.time()
 
-        # 逐个检查有异动的股票
+        # 第一步：筛选异动股（涨幅>2% + 未在冷却期）
+        hot_stocks = []
         for code, quote in quotes.items():
             change_pct = abs(quote.get("change_pct", 0))
             price = quote.get("price", 0)
 
-            # 涨幅 < 2% 跳过（减少计算量）
             if change_pct < 2.0:
                 continue
-
-            # 同一只股票 5 分钟内不重复检查
             last_check = self._realtime_last_check.get(code, 0)
             if now - last_check < 300:
                 continue
-
-            # 已检测过的跳过
             if code in self._realtime_checked_codes:
                 continue
+            hot_stocks.append((code, quote, price))
 
-            self._realtime_last_check[code] = now
+        if not hot_stocks:
+            self._realtime_scan_counter += 1
+            if self._realtime_scan_counter <= 3 or self._realtime_scan_counter % 10 == 0:
+                logger.info(f"[实时检测] 第{self._realtime_scan_counter}轮 扫描{len(codes)}只 异动0只 已发现{len(self._realtime_checked_codes)}个信号")
+            return
 
-            # 获取K线数据
+        # 每 tick 最多处理 50 只，防止首轮全量扫描卡死
+        # 未处理的会在后续 tick 中继续（5分钟冷却期内会逐一覆盖）
+        MAX_PER_TICK = 50
+        if len(hot_stocks) > MAX_PER_TICK:
+            logger.debug(f"[实时检测] 异动股 {len(hot_stocks)} 只, 本轮仅处理前 {MAX_PER_TICK} 只")
+            hot_stocks = hot_stocks[:MAX_PER_TICK]
+
+        # 第二步：并发拉取K线数据（从 QMT 桥接）
+        def _fetch_kline(code):
+            qmt_code = code if '.' in code else (f"{code}.SH" if code.startswith(('6','9')) else f"{code}.SZ")
+            url = f"http://172.31.144.1:8890/api/kline?code={qmt_code}&period=1d&count=90"
             try:
-                symbol = f"sh{code[3:]}" if code.startswith("6") else f"sz{code[3:]}"
-                if "." in code:
-                    bare = code.split(".")[0]
-                    symbol = f"sh{bare}" if bare.startswith("6") else f"sz{bare}"
-                else:
-                    symbol = f"sz{code}"
-
-                url = f"https://quotes.sina.cn/cn/api/jsonp.php/=/CN_MarketDataService.getKLineData?symbol={symbol}&scale=240&ma=no&datalen=90"
-                req = _ureq.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-                resp = _ureq.urlopen(req, timeout=8)
-                text = resp.read().decode('gbk')
-                s = text.index('['); e = text.rindex(']') + 1
-                data = _json.loads(text[s:e])
+                resp = _ureq.urlopen(url, timeout=10)
+                result = _json.loads(resp.read())
+                data = result.get('data', [])
                 if len(data) < 10:
-                    continue
+                    return None
+                return (code, data)
             except Exception:
+                return None
+
+        import concurrent.futures as _cf
+        kline_results = {}
+        with _cf.ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {executor.submit(_fetch_kline, code): code for code, _, _ in hot_stocks}
+            for future in _cf.as_completed(futures):
+                result = future.result()
+                if result:
+                    code, data = result
+                    kline_results[code] = data
+                    self._realtime_last_check[code] = now
+
+        # 第三步：逐个分析有K线数据的异动股
+        for code, quote, price in hot_stocks:
+            if code not in kline_results:
                 continue
+            data = kline_results[code]
 
             df = pd.DataFrame(data)
             for col in ['open', 'close', 'high', 'low']:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
-            df.index = pd.to_datetime(df['day'])
+            df['day'] = pd.to_datetime(df['time'], format='%Y%m%d')
+            df.index = df['day']
 
             # 运行缠论
             core = ChanlunCore()
@@ -961,15 +1019,15 @@ class SignalMonitor:
                     signal_type="bottom_fractal",
                     label=label,
                     action="buy",
-                    message=f"实时检测: {name} 底分型突破 {latest_bottom.third_high:.2f}",
+                    message=f"实时检测: {code} {name} 底分型突破 {latest_bottom.third_high:.2f}",
                     price=price,
                 )
                 self._emit_result(result)
 
-        # 调试日志（每30次扫描输出一次）
+        # 调试日志（每次扫描都输出，首轮多输出便于排查）
         self._realtime_scan_counter += 1
-        if self._realtime_scan_counter % 30 == 0:
-            logger.info(f"[实时检测] 扫描 {len(codes)} 只, 已发现 {len(self._realtime_checked_codes)} 个新信号")
+        if self._realtime_scan_counter <= 3 or self._realtime_scan_counter % 10 == 0:
+            logger.info(f"[实时检测] 第{self._realtime_scan_counter}轮 扫描{len(codes)}只 异动{len(hot_stocks) if 'hot_stocks' in dir() else '?'}只 已发现{len(self._realtime_checked_codes)}个信号")
 
     def get_current_signals(self) -> Dict:
         """获取当前信号状态（供 dashboard 调用）"""

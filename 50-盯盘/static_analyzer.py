@@ -3,7 +3,7 @@
 静态分析模块（盘后运行）
 
 流程：
-  1. 加载持仓 + 自选股列表
+  1. 从 QMT 获取全市场 A 股代码（排除科创板 688 和北交所 8xx/920/BJ）
   2. 获取日线K线数据
   3. 调用缠论引擎分析每只股票
   4. 提取买卖点对应的分型数据 → 生成信号模板
@@ -16,10 +16,12 @@
 import sys
 import json
 import logging
+import urllib.request
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional
 
+import requests as req_lib
 import pandas as pd
 
 # 项目路径
@@ -41,6 +43,133 @@ from state_store import StateStore
 from realtime_fetcher import RealtimeFetcher
 
 logger = logging.getLogger(__name__)
+
+# 禁用 urllib 的 INFO/DEBUG 日志，防止刷屏
+logging.getLogger("urllib").setLevel(logging.WARNING)
+
+# ============================================================
+# 基本面数据获取
+# ============================================================
+
+def fetch_financial_info(codes: List[str]) -> Dict[str, Dict]:
+    """
+    批量获取股票基本面信息（PE、PB、总市值等）
+
+    优先使用 QMT 桥接（最稳定），回退东方财富 API。
+    返回 {code: {pe, pb, mcap, name}}。
+    亏损股的 PE 为负值。
+    """
+    if not codes:
+        return {}
+
+    result = {}
+
+    # 1. 优先使用 QMT 桥接（Windows xtquant，数据最全最稳定）
+    try:
+        qmt_url = "http://172.31.144.1:8890/api/finance"
+        # 分 200 只一批（QMT 接口无限制，但 URL 长度有限）
+        for i in range(0, len(codes), 200):
+            batch = codes[i:i + 200]
+            params = {"codes": ",".join(batch)}
+            resp = req_lib.get(qmt_url, params=params, timeout=30)
+            if resp.status_code == 200:
+                data = resp.json()
+                if isinstance(data, dict):
+                    result.update(data)
+        if result:
+            logger.info(f"QMT 返回来 {len(result)} 只股票基本面数据")
+            return result
+        else:
+            logger.warning("QMT 返回空数据，回退到东方财富 API")
+    except Exception as e:
+        logger.warning(f"QMT 桥接不可用 ({e})，回退到东方财富 API")
+
+    # 2. 回退：东方财富 API（可能限流）
+    logger.info("正在从东方财富获取基本面数据...")
+    for i in range(0, len(codes), 50):
+        batch = codes[i:i + 50]
+        secids = []
+        for code in batch:
+            if code.startswith("6") or code.startswith("9"):
+                secids.append(f"1.{code}")
+            else:
+                secids.append(f"0.{code}")
+
+        url = "https://push2.eastmoney.com/api/qt/ulist.np/get"
+        params = {
+            "fltt": 2,
+            "invt": 2,
+            "fields": "f9,f23,f20,f14,f12",
+            "secids": ",".join(secids),
+        }
+        try:
+            resp = req_lib.get(url, params=params, timeout=10)
+            data = resp.json()
+            if data.get("data") and data["data"].get("diff"):
+                for item in data["data"]["diff"]:
+                    code = item.get("f12", "")
+                    if not code or code in result:
+                        continue
+                    pe = item.get("f9")
+                    if pe is not None:
+                        try:
+                            pe = float(pe)
+                        except (ValueError, TypeError):
+                            pe = None
+                    pb_raw = item.get("f23")
+                    try:
+                        pb = float(pb_raw) if pb_raw is not None else None
+                    except (ValueError, TypeError):
+                        pb = None
+                    mcap_raw = item.get("f20")
+                    try:
+                        mcap = float(mcap_raw) if mcap_raw is not None else None
+                    except (ValueError, TypeError):
+                        mcap = None
+                    result[code] = {
+                        "pe": pe,
+                        "pb": pb,
+                        "mcap": mcap,
+                        "name": item.get("f14", code),
+                    }
+        except Exception as e:
+            logger.warning(f"东方财富 API 请求失败 (batch {i}): {e}")
+
+    logger.info(f"基本面数据获取完成: {len(result)} 只")
+    return result
+
+
+def should_filter_stock(info: dict) -> bool:
+    """
+    判断是否应该过滤该股票。
+
+    过滤条件：亏损（PE<0 或无EPS）且无改善迹象的股票。
+    但亏损在逐季改善的不过滤（潜在扭亏股）。
+
+    判断依据：
+      1. PE 为负 → 亏损
+      2. PE 为 None 但 np_latest 为负 → 亏损（EPS<0无法算PE）
+      3. 以上情况 + loss_narrowing=True → 亏损改善，不过滤
+    """
+    pe = info.get("pe")
+    np_latest = info.get("np_latest")
+
+    # 判断是否亏损
+    is_losing = False
+    if pe is not None and pe < 0:
+        is_losing = True
+    elif pe is None and np_latest is not None and np_latest < 0:
+        is_losing = True
+
+    if not is_losing:
+        return False  # 盈利，不过滤
+
+    # 亏损，检查是否在改善
+    loss_narrowing = info.get("loss_narrowing")
+    if loss_narrowing is True:
+        return False  # 亏损收窄 → 潜在扭亏，不过滤
+
+    return True  # 亏损且无改善，过滤
 
 _CST = timezone(timedelta(hours=8))
 
@@ -83,19 +212,166 @@ def load_watchlist() -> List[Dict]:
         return []
 
 
+def get_full_market_codes() -> List[str]:
+    """
+    从 QMT 获取全市场 A 股代码（裸代码，不含 .SH/.SZ 后缀）
+
+    排除：
+      - 科创板（688xxx）
+      - 北交所（8xxxxx、920xxx、.BJ 后缀）
+    """
+    try:
+        resp = urllib.request.urlopen("http://172.31.144.1:8890/api/stocks/list", timeout=15)
+        data = json.loads(resp.read())
+        raw = data.get("stocks", [])
+        # 过滤：排除科创板(688)和北交所(8开头、920开头、.BJ后缀)
+        codes = []
+        for c in raw:
+            if c.startswith("688") or c.startswith("8") or c.startswith("920") or c.endswith(".BJ"):
+                continue
+            # 去掉 .SH/.SZ 后缀，变成裸代码
+            bare = c.replace(".SH", "").replace(".SZ", "").replace(".BJ", "")
+            codes.append(bare)
+        logger.info(f"QMT 返回 {data.get('count',0)} 只, 过滤后 {len(codes)} 只 A 股")
+        return codes
+    except Exception as e:
+        logger.error(f"获取全市场代码失败: {e}")
+        return []
+
+
 def load_kline_data(code: str, days: int = 365, scale: int = 240) -> Optional[pd.DataFrame]:
     """
     加载K线数据（日线或15分钟）
 
-    复用 watchdog.py 中的 fetch_kline 逻辑，
-    此处直接调用以保证数据一致性。
+    内联实现，避免与 watchdog.py 的循环导入。
     """
+    # 仅日线支持本地数据源
+    if scale == 240:
+        # 0. 优先 QMT（与实时检测器一致，保证数据及时性）
+        qmt_df = None
+        try:
+            qmt_code = f"{code}.SH" if code.startswith(('6', '9')) else f"{code}.SZ"
+            url = f"http://172.31.144.1:8890/api/kline?code={qmt_code}&period=1d&count={min(days, 365)}"
+            resp = req_lib.get(url, timeout=10)
+            result = resp.json()
+            qmt_data = result.get('data', [])
+            if len(qmt_data) >= 30:
+                qmt_df = pd.DataFrame(qmt_data)
+                qmt_df['date'] = pd.to_datetime(qmt_df['time'], format='%Y%m%d')
+                qmt_df = qmt_df.set_index('date')
+                qmt_df = qmt_df[['open', 'high', 'low', 'close', 'volume']].astype(float)
+        except Exception:
+            pass
+
+        if qmt_df is not None and len(qmt_df) >= 30:
+            return qmt_df.tail(days).reset_index(drop=False).rename(columns={"index": "date"})
+
+        # 1. 回退：同花顺本地数据
+        ths_df = None
+        try:
+            from qmt_bridge.hexin_reader import get_hexin_kline, has_hexin_data
+            if has_hexin_data(code):
+                ths_df = get_hexin_kline(code, days=days + 60)
+        except Exception:
+            pass
+
+        # 2. 缓存（仅当无同花顺数据时）
+        csv_df = None
+        if ths_df is None or len(ths_df) < 30:
+            csv_path = KLINE_CACHE_DIR / f"{code}.csv"
+            if csv_path.exists():
+                try:
+                    csv_df = pd.read_csv(csv_path)
+                    if "day" in csv_df.columns and "date" not in csv_df.columns:
+                        csv_df = csv_df.rename(columns={"day": "date"})
+                    if len(csv_df) >= 30:
+                        csv_df = csv_df.set_index("date")
+                        csv_df.index = pd.to_datetime(csv_df.index)
+                except Exception:
+                    pass
+
+        # 3. 新浪接口
+        sina_df = None
+        try:
+            if code.startswith("6") or code.startswith("9"):
+                symbol = f"sh{code}"
+            else:
+                symbol = f"sz{code}"
+            url = f"https://quotes.sina.cn/cn/api/jsonp.php/=/CN_MarketDataService.getKLineData?symbol={symbol}&scale={scale}&ma=no&datalen={days + 60}"
+            resp = req_lib.get(url, timeout=10)
+            text = resp.text
+            start = text.index("[")
+            end = text.rindex("]") + 1
+            data = json.loads(text[start:end])
+            if data:
+                sina_df = pd.DataFrame(data)
+                sina_df = sina_df.rename(columns={"day": "date"})
+                for col in ["open", "close", "high", "low", "volume"]:
+                    if col in sina_df.columns:
+                        sina_df[col] = pd.to_numeric(sina_df[col], errors="coerce")
+                sina_df["date"] = pd.to_datetime(sina_df["date"])
+                sina_df = sina_df.set_index("date")
+        except Exception:
+            pass
+
+        # 4. 合并数据
+        if ths_df is not None and len(ths_df) >= 30 and sina_df is not None and len(sina_df) >= 30:
+            common_dates = ths_df.index.intersection(sina_df.index)
+            if len(common_dates) > 5:
+                ratios = (ths_df.loc[common_dates, "close"] / sina_df.loc[common_dates, "close"]).values
+                ratio = sum(ratios) / len(ratios)
+            else:
+                ratio = 1.0
+
+            all_dates = sina_df.index.union(ths_df.index).sort_values()
+            merged = pd.DataFrame(index=all_dates)
+            for col in ["open", "high", "low", "close", "volume"]:
+                if col in ths_df.columns:
+                    merged[f"ths_{col}"] = ths_df[col]
+                    merged[f"sina_{col}"] = sina_df[col] * ratio
+
+            for col in ["open", "high", "low", "close"]:
+                merged[col] = merged[f"ths_{col}"].fillna(merged[f"sina_{col}"])
+            merged["volume"] = merged["ths_volume"].fillna(merged["sina_volume"]).fillna(0).astype(int)
+
+            merged = merged.drop(columns=[c for c in merged.columns if c.startswith("ths_") or c.startswith("sina_")])
+            merged = merged.dropna(subset=["close"])
+
+            if len(merged) >= 30:
+                return merged.tail(days).reset_index(drop=False).rename(columns={"index": "date"})
+
+        if ths_df is not None and len(ths_df) >= 30:
+            return ths_df.reset_index().tail(days).reset_index(drop=True)
+
+        if csv_df is not None and len(csv_df) >= 30:
+            return csv_df.tail(days).reset_index(drop=True)
+
+    # 5. 仅有新浪（或非日线）
     try:
-        from watchdog import fetch_kline
-        return fetch_kline(code, days=days, scale=scale)
-    except ImportError:
-        logger.error("无法导入 fetch_kline（watchdog.py）")
-        return None
+        if sina_df is not None and len(sina_df) >= 30:
+            return sina_df.tail(days).reset_index(drop=False).rename(columns={"index": "date"})
+
+        if code.startswith("6") or code.startswith("9"):
+            symbol = f"sh{code}"
+        else:
+            symbol = f"sz{code}"
+        url = f"https://quotes.sina.cn/cn/api/jsonp.php/=/CN_MarketDataService.getKLineData?symbol={symbol}&scale={scale}&ma=no&datalen={days + 30}"
+        resp = req_lib.get(url, timeout=10)
+        text = resp.text
+        start = text.index("[")
+        end = text.rindex("]") + 1
+        data = json.loads(text[start:end])
+        if not data:
+            return pd.DataFrame()
+        df = pd.DataFrame(data)
+        df = df.rename(columns={"day": "date"})
+        for col in ["open", "close", "high", "low", "volume"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+        return df.tail(days).reset_index(drop=True)
+    except Exception as e:
+        logger.debug(f"获取 {code} K线(scale={scale})失败: {e}")
+        return pd.DataFrame()
 
 
 # ============================================================
@@ -307,6 +583,7 @@ def check_divergence_zone(
 def run_static_analysis(
     state_store: StateStore,
     analysis_date: Optional[str] = None,
+    use_watchlist: bool = False,
 ) -> List[object]:
     """
     运行完整静态分析，生成所有信号模板
@@ -314,6 +591,7 @@ def run_static_analysis(
     Args:
         state_store: StateStore 实例
         analysis_date: 分析日期（默认今天）
+        use_watchlist: True=仅分析自选股+持仓, False=全市场A股
 
     Returns:
         所有生成的信号模板列表
@@ -325,38 +603,61 @@ def run_static_analysis(
 
     # 1. 加载数据源
     positions = load_positions()
-    watchlist = load_watchlist()
-    logger.info(f"持仓: {len(positions)} 只, 自选股: {len(watchlist)} 只")
-
-    # 2. 构建待分析代码列表
-    watchlist_codes = set()
-    for w in watchlist:
-        code = w.get("code", "") if isinstance(w, dict) else str(w)
-        if code and not code.startswith("399") and not code.startswith("880"):
-            watchlist_codes.add(code)
-
     position_codes = {p.get("股票代码", "") for p in positions}
-    # 重点关注的股票 = 持仓 + 自选股
-    all_codes = position_codes | watchlist_codes
+    logger.info(f"持仓: {len(positions)} 只")
+
+    if use_watchlist:
+        # 旧模式：仅分析自选股+持仓
+        watchlist = load_watchlist()
+        logger.info(f"自选股: {len(watchlist)} 只")
+        watchlist_codes = set()
+        for w in watchlist:
+            code = w.get("code", "") if isinstance(w, dict) else str(w)
+            if code and not code.startswith("399") and not code.startswith("880"):
+                watchlist_codes.add(code)
+        all_codes = sorted(position_codes | watchlist_codes)
+    else:
+        # 新模式：从 QMT 获取全市场 A 股代码（排除科创板688和北交所8xx/920/BJ）
+        logger.info("正在从 QMT 获取全市场股票列表...")
+        market_codes = get_full_market_codes()
+        # 确保持仓也在分析列表中
+        all_codes = sorted(set(market_codes) | position_codes)
+        logger.info(f"待分析: {len(all_codes)} 只 ({len(market_codes)} 全市场)")
 
     all_signals = []
     fetcher = RealtimeFetcher()
+    total = len(all_codes)
 
-    for code in sorted(all_codes):
+    # 批量获取基本面数据（PE），用于过滤亏损股
+    logger.info("正在批量获取基本面数据（PE）...")
+    fin_info = fetch_financial_info(all_codes)
+    filtered = [code for code, info in fin_info.items()
+                if should_filter_stock(info)]
+    if filtered:
+        logger.info(f"亏损股 {len(filtered)} 只将被过滤（亏损且无改善迹象）")
+
+    for idx, code in enumerate(all_codes):
         stock_name = ""
-        # 尝试获取名称
+        # 持仓股票的名称从持仓文件获取
         for p in positions:
             if p.get("股票代码") == code:
                 stock_name = p.get("名称", code)
                 break
         if not stock_name:
-            for w in watchlist:
-                wc = w.get("code", "") if isinstance(w, dict) else str(w)
-                if wc == code:
-                    stock_name = w.get("name", code) if isinstance(w, dict) else code
-                    break
-        if not stock_name:
             stock_name = code
+
+        # 每 500 只打一次进度
+        if (idx + 1) % 500 == 0 or idx == 0:
+            logger.info(f"进度: {idx+1}/{total} ({100*(idx+1)//total}%)")
+
+        # 过滤亏损股（PE<0且亏损无改善迹象的跳过，持仓股不过滤）
+        if code not in position_codes:
+            info = fin_info.get(code, {})
+            if should_filter_stock(info):
+                name = info.get("name", code)
+                pe = info.get("pe", "?")
+                logger.debug(f"{code} {name} PE={pe} 亏损无改善，跳过")
+                continue
 
         # 3. 日线分析
         daily_df = load_kline_data(code, days=365, scale=240)
@@ -373,7 +674,7 @@ def run_static_analysis(
             core._calc_macd(daily_df["close"].astype(float))
         core.find_buy_sell_points()
 
-        logger.info(f"{code} {stock_name}: "
+        logger.debug(f"{code} {stock_name}: "
                      f"分型={len(core.fractals)} 笔={len(core.bis)} "
                      f"中枢={len(core.zhong_shus)} 买卖点={len(core.buy_sell_points)}")
 
@@ -444,9 +745,9 @@ def run_static_analysis(
         )
         all_signals.append(risk_signal)
 
-    # 7. 写入 DB（先清空旧数据）
+    # 7. 写入 DB（保留历史信号，只清除pending状态的旧信号）
     logger.info(f"生成信号模板 {len(all_signals)} 条，写入 DB")
-    state_store.clear_signal_templates()
+    state_store.clear_signal_templates(keep_history=True)
     state_store.save_signal_templates(all_signals)
     logger.info("=== 静态分析完成 ===")
 
@@ -458,9 +759,19 @@ def run_static_analysis(
 # ============================================================
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="盘后静态分析")
+    parser.add_argument("--watchlist", action="store_true",
+                        help="仅分析自选股+持仓（默认全市场）")
+    args = parser.parse_args()
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
     )
     store = StateStore()
-    run_static_analysis(store)
+    if args.watchlist:
+        # 调用旧逻辑：自选股+持仓（通过参数控制）
+        run_static_analysis(store, use_watchlist=True)
+    else:
+        run_static_analysis(store)

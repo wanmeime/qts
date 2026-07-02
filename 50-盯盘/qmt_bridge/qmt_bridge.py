@@ -124,6 +124,47 @@ def api_status():
     })
 
 
+@app.route("/api/stocks/list")
+def api_stocks_list():
+    """获取全市场 A 股列表（剔除科创板 688xxx），返回实际上市的真实代码"""
+    try:
+        sectors = get_sector_list()
+        logger.info(f"QMT 板块列表返回: {type(sectors)} len={len(sectors) if sectors else 0}")
+        # 尝试找"全部A股"或"沪深A股"
+        target_sectors = ["沪深A股", "全部A股", "上海A股", "深圳A股", "A股"]
+        all_codes = set()
+        for sec in sectors if sectors else []:
+            sec_name = sec.get("sector_name", "") if isinstance(sec, dict) else str(sec)
+            if any(t in sec_name for t in target_sectors):
+                stock_list = get_stock_list_in_sector(sec_name)
+                if stock_list:
+                    for c in stock_list:
+                        if not c.startswith("688"):
+                            all_codes.add(c)
+        if all_codes:
+            result = sorted(all_codes)
+            logger.info(f"全市场A股列表: {len(result)} 只（已剔除科创板）")
+            return jsonify({"count": len(result), "stocks": result})
+    except Exception as e:
+        logger.error(f"获取股票列表失败: {e}")
+        import traceback
+        traceback.print_exc()
+
+    # 备用：生成合理号段
+    fallback = []
+    for prefix in ['600', '601', '603', '605']:
+        for suffix in range(1, 1000):
+            fallback.append(f'{prefix}{suffix:03d}.SH')
+    for prefix in ['000', '001', '002']:
+        for suffix in range(1, 1000):
+            fallback.append(f'{prefix}{suffix:03d}.SZ')
+    for prefix in ['300', '301']:
+        for suffix in range(1, 1000):
+            fallback.append(f'{prefix}{suffix:03d}.SZ')
+    logger.warning(f"QMT 板块列表不可用，回退号段: {len(fallback)} 只")
+    return jsonify({"count": len(fallback), "stocks": fallback, "fallback": True})
+
+
 @app.route("/api/quotes")
 def api_quotes():
     """获取实时行情（从缓存，如无可用的缓存则返回空）"""
@@ -297,8 +338,231 @@ def api_instrument():
 
 
 # ============================================================
-# 交易接口 — 模拟盘自动交易
+# 财务数据接口 — PE / PB / 市值
 # ============================================================
+
+@app.route("/api/finance")
+def api_finance():
+    """
+    获取股票基本面数据（PE/PB/市值）
+
+    从 PershareIndex 表取 EPS（s_fa_eps_basic）/ BPS（s_fa_bps），
+    从 Capital 表取总股本（total_capital），结合实时价计算 PE/PB/市值。
+
+    参数:
+        codes: 逗号分隔的股票代码
+
+    返回:
+        {code: {pe, pb, mcap, name}}
+    """
+    codes_str = request.args.get("codes", "")
+    if not codes_str:
+        return jsonify({"error": "缺少 codes 参数"}), 400
+
+    code_list = [c.strip() for c in codes_str.split(",") if c.strip()]
+    if not code_list:
+        return jsonify({})
+
+    from xtquant.xtdata import get_financial_data, download_financial_data2
+
+    qmt_codes = [_ensure_qmt_code(c) for c in code_list]
+    result = {}
+
+    # 下载财务数据
+    try:
+        download_financial_data2(qmt_codes, ['PershareIndex', 'Capital', 'Income'], '', '')
+    except Exception:
+        try:
+            from xtquant.xtdata import download_financial_data
+            download_financial_data(qmt_codes, ['PershareIndex', 'Capital', 'Income'])
+        except Exception:
+            pass
+
+    # 查询
+    fin_data = None
+    try:
+        fin_data = get_financial_data(qmt_codes, ['PershareIndex', 'Capital', 'Income'], '', '', 'report_time')
+    except Exception:
+        pass
+
+    # 实时价
+    tick = {}
+    try:
+        tick = get_full_tick(qmt_codes)
+    except Exception:
+        pass
+
+    if not fin_data:
+        # 回退
+        for i, code in enumerate(qmt_codes):
+            bare = code_list[i] if i < len(code_list) else code.replace(".SH", "").replace(".SZ", "")
+            bare = bare.replace(".SH", "").replace(".SZ", "")
+            detail = get_instrument_detail(code)
+            price = tick[code].get('lastPrice', 0) if code in tick else 0
+            total_vol = float(detail.get("TotalVolume", 0)) if detail else 0
+            mcap = price * total_vol if price > 0 and total_vol > 0 else None
+            result[bare] = {"pe": None, "pb": None, "mcap": mcap, "name": _get_stock_name(code)}
+        return jsonify(result)
+
+    for i, code in enumerate(qmt_codes):
+        bare = code_list[i] if i < len(code_list) else code.replace(".SH", "").replace(".SZ", "")
+        bare = bare.replace(".SH", "").replace(".SZ", "")
+        name = _get_stock_name(code)
+        pe = pb = mcap = None
+        try:
+            sd = fin_data.get(code, {})
+            # EPS + BPS
+            pdf = sd.get('PershareIndex')
+            eps = bps = None
+            if pdf is not None:
+                try:
+                    last = pdf.iloc[-1]
+                    eps = float(last['s_fa_eps_basic']) if 's_fa_eps_basic' in last.index else None
+                    bps = float(last['s_fa_bps']) if 's_fa_bps' in last.index else None
+                except Exception:
+                    pass
+            # 总股本
+            cdf = sd.get('Capital')
+            total_shares = None
+            if cdf is not None:
+                try:
+                    total_shares = float(cdf.iloc[-1]['total_capital'])
+                except Exception:
+                    pass
+            # 价格
+            price = float(tick[code].get('lastPrice', 0)) if code in tick else 0
+            # 市值
+            if price > 0 and total_shares and total_shares > 0:
+                mcap = price * total_shares
+            # PE = price / eps
+            if eps and eps > 0 and price > 0:
+                pe = round(price / eps, 2)
+            # PB = price / bps
+            if bps and bps > 0 and price > 0:
+                pb = round(price / bps, 2)
+            # 备选：从净利润算 PE
+            if pe is None and mcap and mcap > 0:
+                idf = sd.get('Income')
+                np_latest = None
+                np_prev = None
+                if idf is not None:
+                    try:
+                        if 'net_profit_excl_min_int_inc' in idf.iloc[-1].index:
+                            np_latest = float(idf.iloc[-1]['net_profit_excl_min_int_inc'])
+                        if len(idf) >= 2 and 'net_profit_excl_min_int_inc' in idf.iloc[-2].index:
+                            np_prev = float(idf.iloc[-2]['net_profit_excl_min_int_inc'])
+                        if np_latest is None and 'net_profit_incl_min_int_inc' in idf.iloc[-1].index:
+                            np_latest = float(idf.iloc[-1]['net_profit_incl_min_int_inc'])
+                        if np_prev is None and len(idf) >= 2 and 'net_profit_incl_min_int_inc' in idf.iloc[-2].index:
+                            np_prev = float(idf.iloc[-2]['net_profit_incl_min_int_inc'])
+                    except Exception:
+                        pass
+                    try:
+                        if np_latest and np_latest > 0:
+                            pe = round(mcap / np_latest, 2)
+                    except Exception:
+                        pass
+                # 趋势判断
+                loss_narrowing = None
+                if np_latest is not None and np_prev is not None:
+                    if np_latest < 0 and np_prev < 0:
+                        loss_narrowing = (np_latest > np_prev)
+                    elif np_latest > 0 > np_prev:
+                        loss_narrowing = True
+                    elif np_latest < 0 < np_prev:
+                        loss_narrowing = False
+            else:
+                np_latest = np_prev = None
+                loss_narrowing = None
+
+            result[bare] = {"pe": pe, "pb": pb, "mcap": mcap, "name": name,
+                            "np_latest": np_latest, "np_prev": np_prev,
+                            "loss_narrowing": loss_narrowing}
+        except Exception:
+            result[bare] = {"pe": None, "pb": None, "mcap": None, "name": name}
+
+    return jsonify(result)
+
+
+@app.route("/api/finance/raw")
+def api_finance_raw():
+    """
+    调试：get_financial_data 原始返回值 + _ensure_qmt_code
+    """
+    code = request.args.get("code", "000001")
+    qmt_code = _ensure_qmt_code(code)
+    out = {"input": code, "qmt_code": qmt_code}
+    try:
+        from xtquant.xtdata import get_financial_data, download_financial_data2
+        out["import_ok"] = True
+        download_financial_data2([qmt_code], ['PershareIndex', 'Capital'], '', '')
+        out["download_ok"] = True
+        data = get_financial_data([qmt_code], ['PershareIndex', 'Capital'], '', '', 'report_time')
+        out["data_type"] = str(type(data))
+        if data:
+            out["data_keys"] = list(data.keys())[:5]
+            if qmt_code in data:
+                sd = data[qmt_code]
+                out["tables"] = list(sd.keys())
+                for tbl in sd:
+                    df = sd[tbl]
+                    out[f"{tbl}_type"] = str(type(df).__name__)
+                    out[f"{tbl}_rows"] = len(df) if hasattr(df, '__len__') else '?'
+            else:
+                out["code_not_in_data"] = True
+                # 试第一个 key
+                first_key = list(data.keys())[0] if data else None
+                out["first_key"] = first_key
+        else:
+            out["data_is_empty"] = True
+    except Exception as e:
+        import traceback
+        out["error"] = str(e)[:500]
+        out["tb"] = traceback.format_exc()[:500]
+    return jsonify(out)
+
+
+@app.route("/api/finance/debug")
+def api_finance_debug():
+    """调试：获取财务数据原始列名"""
+    code = request.args.get("code", "000001.SZ")
+    qmt_code = _ensure_qmt_code(code)
+    result = {}
+    try:
+        from xtquant.xtdata import get_financial_data, download_financial_data2
+        download_financial_data2([qmt_code], ['Income', 'Capital', 'PershareIndex'], '', '')
+        data = get_financial_data([qmt_code], ['Income', 'Capital', 'PershareIndex'], '', '', 'report_time')
+        if data and qmt_code in data:
+            sd = data[qmt_code]
+            for tbl in ['Income', 'Capital', 'PershareIndex']:
+                df = sd.get(tbl)
+                if df is not None and hasattr(df, 'empty') and not df.empty:
+                    result[tbl] = list(df.columns)
+                    row = df.iloc[-1]
+                    sample = {}
+                    for c in list(df.columns)[:15]:
+                        v = row[c]
+                        if hasattr(v, 'item'):
+                            v = v.item()
+                        sample[c] = str(v)[:30]
+                    result[f"{tbl}_sample"] = sample
+                else:
+                    result[tbl] = f"empty(type={type(df).__name__})" if df is not None else "None"
+        else:
+            result["error"] = f"no data for {qmt_code}"
+            result["data_keys"] = list(data.keys())[:5] if data else "None"
+    except Exception as e:
+        import traceback
+        result["error"] = str(e)[:300]
+        result["traceback"] = traceback.format_exc()[:500]
+    return jsonify(result)
+
+
+# ============================================================
+# 交易接口 — 模拟盘自动交易（无实盘权限）
+# ============================================================
+
+_paper_trader = None
 
 
 def _init_trade() -> bool:
@@ -470,6 +734,18 @@ def api_trade_orders():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/trade/mode")
+def api_trade_mode():
+    """查询交易状态（实盘/模拟盘）"""
+    return jsonify({
+        "real_trader_ready": False,
+        "real_trader_note": "无实盘权限（仅模拟账户）",
+        "paper_trader_ready": _check_trade_ready() if _PAPER_TRADER_AVAILABLE else False,
+        "current_default": "paper",
+        "available_modes": ["paper"],
+    })
+
+
 # ============================================================
 # 主入口
 # ============================================================
@@ -488,7 +764,7 @@ if __name__ == "__main__":
 
     logger.info(f"QMT 行情转发服务启动 → http://{args.host}:{args.port}")
     if _paper_trader:
-        logger.info("交易接口: 已启用（独立模拟盘）")
+        logger.info("交易接口: ✅ 模拟盘已启用（无实盘权限）")
     else:
-        logger.info("交易接口: 未就绪（仅行情模式）")
+        logger.info("交易接口: ❌ 未就绪（仅行情模式）")
     app.run(host=args.host, port=args.port, debug=False, threaded=True)

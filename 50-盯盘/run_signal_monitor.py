@@ -21,6 +21,7 @@ from signal_monitor import SignalMonitor
 from chanlun_service import ChanlunService
 from notifier import Notifier
 from realtime_fetcher import RealtimeFetcher, QmtFetcher
+from feishu_ack import FeishuAckListener
 
 logging.basicConfig(
     level=logging.INFO,
@@ -94,6 +95,10 @@ monitor.load_signals()
 logger.info(f"加载 {sum(len(v) for v in monitor._signals.values())} 条信号")
 logger.info(f"轮询间隔: {tick_interval}s")
 
+# 启动飞书确认监听（后台轮询用户回复）
+ack_listener = FeishuAckListener(state_store=store)
+ack_listener.start()
+
 # 信号处理
 running = True
 
@@ -113,4 +118,5 @@ try:
         time.sleep(tick_interval)
 finally:
     chanlun_service.stop()
+    ack_listener.stop()
     logger.info("信号监测系统已停止")

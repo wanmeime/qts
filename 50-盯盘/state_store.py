@@ -237,8 +237,13 @@ class StateStore:
                 result[k] = v
         return result
 
-    def clear_signal_templates(self, signal_type: Optional[str] = None, stock_code: Optional[str] = None):
-        """清除信号模板（盘后重跑前调用）"""
+    def clear_signal_templates(self, signal_type: Optional[str] = None, stock_code: Optional[str] = None, keep_history: bool = True):
+        """清除信号模板（盘后重跑前调用）
+
+        参数:
+          - keep_history: True（默认）只清除 pending 状态的信号，保留已触发的历史记录
+                          False 则全量清除（兼容旧行为）
+        """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         conditions = []
@@ -249,6 +254,9 @@ class StateStore:
         if stock_code:
             conditions.append("stock_code = ?")
             params.append(stock_code)
+        if keep_history:
+            # 只清除 pending 状态的信号，已触发/已确认/已完成的历史保留
+            conditions.append("status = 'pending'")
 
         where = " WHERE " + " AND ".join(conditions) if conditions else ""
         cursor.execute(f"DELETE FROM signal_templates{where}", params)
@@ -336,6 +344,156 @@ class StateStore:
     def get_pending_signals(self, stock_code: Optional[str] = None) -> List[Dict]:
         """获取所有 PENDING 状态的信号模板"""
         return self.load_signal_templates(status="pending", stock_code=stock_code)
+
+    # ================================================================
+    # 信号状态生命周期管理
+    # ================================================================
+
+    def acknowledge_signal(self, signal_id: int, notes: str = "") -> bool:
+        """
+        用户确认已收到信号通知。
+
+        状态流转: activated → acknowledged
+        确认后系统不再推送该信号的通知。
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        now = datetime.now(_CST).strftime("%Y-%m-%d %H:%M:%S")
+
+        cursor.execute("SELECT data, status FROM signal_templates WHERE id = ?", (signal_id,))
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return False
+
+        data = json.loads(row[0])
+        current_status = row[1]
+
+        # 只有 activated 状态的才能确认
+        if current_status not in ("activated", "pending"):
+            conn.close()
+            return False
+
+        data["status"] = "acknowledged"
+        data["updated_at"] = now
+        data["acknowledged_at"] = now
+        data["acknowledge_notes"] = notes
+
+        cursor.execute("""
+            UPDATE signal_templates SET data = ?, status = ?, updated_at = ?
+            WHERE id = ?
+        """, (json.dumps(data, ensure_ascii=False), "acknowledged", now, signal_id))
+
+        conn.commit()
+        conn.close()
+        return True
+
+    def complete_signal(self, signal_id: int, operation_notes: str = "") -> bool:
+        """
+        用户完成操作（止损卖出/止盈减仓等），信号终结。
+
+        状态流转: acknowledged → completed
+        已完成信号永久保留在DB中，供复盘分析。
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        now = datetime.now(_CST).strftime("%Y-%m-%d %H:%M:%S")
+
+        cursor.execute("SELECT data, status FROM signal_templates WHERE id = ?", (signal_id,))
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return False
+
+        data = json.loads(row[0])
+        current_status = row[1]
+
+        # 可从 acknowledged 或 activated 直接完成
+        if current_status not in ("acknowledged", "activated"):
+            conn.close()
+            return False
+
+        data["status"] = "completed"
+        data["updated_at"] = now
+        data["completed_at"] = now
+        data["operation_notes"] = operation_notes
+
+        cursor.execute("""
+            UPDATE signal_templates SET data = ?, status = ?, updated_at = ?
+            WHERE id = ?
+        """, (json.dumps(data, ensure_ascii=False), "completed", now, signal_id))
+
+        conn.commit()
+        conn.close()
+        return True
+
+    def get_signal_history(
+        self,
+        signal_type: Optional[str] = None,
+        status: Optional[str] = None,
+        stock_code: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Dict:
+        """
+        获取信号历史记录（含所有状态），供 Dashboard/复盘使用。
+
+        返回格式:
+          {
+            "total": int,           # 符合条件的总数
+            "signals": [dict],      # 当前页数据
+            "limit": int,
+            "offset": int,
+          }
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        where_clauses = []
+        params = []
+
+        if signal_type:
+            where_clauses.append("signal_type = ?")
+            params.append(signal_type)
+        if status:
+            where_clauses.append("status = ?")
+            params.append(status)
+        if stock_code:
+            where_clauses.append("stock_code = ?")
+            params.append(stock_code)
+
+        where = " WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+        # 先查总数
+        cursor.execute(f"SELECT COUNT(*) FROM signal_templates{where}", params)
+        total = cursor.fetchone()[0]
+
+        # 再查数据，按创建时间倒序
+        cursor.execute(
+            f"SELECT id, signal_type, stock_code, data, status, created_at, updated_at FROM signal_templates{where} ORDER BY id DESC LIMIT ? OFFSET ?",
+            params + [limit, offset],
+        )
+
+        signals = []
+        for row in cursor.fetchall():
+            signals.append({
+                "id": row[0],
+                "signal_type": row[1],
+                "stock_code": row[2],
+                "data": json.loads(row[3]),
+                "status": row[4],
+                "created_at": row[5],
+                "updated_at": row[6],
+            })
+
+        conn.close()
+
+        return {
+            "total": total,
+            "signals": signals,
+            "limit": limit,
+            "offset": offset,
+        }
 
     @staticmethod
     def _signal_type_name(signal_obj: Any) -> str:

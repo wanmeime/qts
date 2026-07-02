@@ -1,6 +1,37 @@
 # 更新日志
 
-## 2026-06-24
+## 2026-07-02
+
+### 新增：QMT 桥接财务数据接口
+
+**文件**: `50-盯盘/qmt_bridge/qmt_bridge.py`
+
+- 新增 `/api/finance` 端点，通过 xtquant `get_financial_data()` 获取 PE/PB/市值
+- 从 PershareIndex 表取 `s_fa_eps_basic`（EPS）和 `s_fa_bps`（每股净资产）
+- 从 Capital 表取 `total_capital`（总股本），计算市值 = price × total_shares
+- 从 Income 表取 `net_profit_excl_min_int_inc`（归母净利润）用于 PE 备选计算
+- 新增最近两季净利润对比：`np_latest` / `np_prev` / `loss_narrowing`
+- 新增 `/api/finance/raw`、`/api/finance/debug` 调试端点
+- 新增 `/api/trade/mode` 查询交易状态（模拟盘/无实盘权限）
+
+### 新增：亏损股过滤（含扭亏趋势判断）
+
+**文件**: `50-盯盘/static_analyzer.py`
+
+- `fetch_financial_info()` 优先通过 QMT bridge 获取 PE/PB，失败则回退东方财富 API
+- `should_filter_stock()` 替代 `is_loss_making()`，不再一刀切
+- 过滤逻辑：
+  - PE < 0 且亏损恶化的 → 过滤 ❌
+  - PE < 0 但亏损逐季收窄的 → 放行 ✅（潜在扭亏股）
+  - PE ≥ 0 或数据不足 → 放行 ✅
+  - 持仓股永远不过滤
+
+### 修复：通知消息缺失股票代码
+
+**文件**: `50-盯盘/signal_monitor.py`
+
+- 底分型突破/失效、顶分型确认/失效、止损、浮盈、波动报警等 9 处消息均添加股票代码前缀
+- 例：`底分型buy1突破！` → `002714 底分型buy1突破！`
 
 ### 清理：旧 watchdog 废弃代码
 
